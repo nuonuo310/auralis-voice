@@ -98,7 +98,28 @@ test('OAuth MCP config is all-or-none and keeps existing local config compatible
     AURALIS_OAUTH_CLIENT_ID: CLIENT_ID,
     AURALIS_OAUTH_CLIENT_SECRET: CLIENT_SECRET
   }));
-  assert.deepEqual(config.oauth, { origin: ORIGIN, clientId: CLIENT_ID, clientSecret: CLIENT_SECRET });
+  assert.deepEqual(config.oauth, {
+    origin: ORIGIN,
+    clientId: CLIENT_ID,
+    clientSecret: CLIENT_SECRET,
+    redirectUri: CALLBACK_URL
+  });
+  const connectorRedirect = 'https://chatgpt.com/connector/oauth/SK8T0Ua2Ei2y';
+  assert.equal(loadConfig(validEnv({
+    AURALIS_PUBLIC_ORIGIN: ORIGIN,
+    AURALIS_OAUTH_CLIENT_ID: CLIENT_ID,
+    AURALIS_OAUTH_CLIENT_SECRET: CLIENT_SECRET,
+    AURALIS_OAUTH_REDIRECT_URI: connectorRedirect
+  })).oauth.redirectUri, connectorRedirect);
+  assert.throws(
+    () => loadConfig(validEnv({
+      AURALIS_PUBLIC_ORIGIN: ORIGIN,
+      AURALIS_OAUTH_CLIENT_ID: CLIENT_ID,
+      AURALIS_OAUTH_CLIENT_SECRET: CLIENT_SECRET,
+      AURALIS_OAUTH_REDIRECT_URI: 'https://example.com/callback'
+    })),
+    (error) => error instanceof ConfigError && /exact ChatGPT OAuth redirect URI/.test(error.message)
+  );
 });
 
 test('OAuth discovery and unauthenticated MCP challenge expose no secret and call no provider', async () => {

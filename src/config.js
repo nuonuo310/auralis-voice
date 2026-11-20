@@ -16,7 +16,8 @@ const OPTIONAL_KEYS = Object.freeze([
   'PUBLIC_V1_ACCESS_TOKEN',
   'AURALIS_PUBLIC_ORIGIN',
   'AURALIS_OAUTH_CLIENT_ID',
-  'AURALIS_OAUTH_CLIENT_SECRET'
+  'AURALIS_OAUTH_CLIENT_SECRET',
+  'AURALIS_OAUTH_REDIRECT_URI'
 ]);
 
 class ConfigError extends Error {
@@ -112,6 +113,10 @@ function parseOAuthConfig(env) {
 
   const clientId = env.AURALIS_OAUTH_CLIENT_ID.trim();
   const clientSecret = env.AURALIS_OAUTH_CLIENT_SECRET.trim();
+  const redirectUri = typeof env.AURALIS_OAUTH_REDIRECT_URI === 'string'
+    && env.AURALIS_OAUTH_REDIRECT_URI.trim() !== ''
+    ? env.AURALIS_OAUTH_REDIRECT_URI.trim()
+    : 'https://chatgpt.com/connector_platform_oauth_redirect';
   if (clientId.length < 8 || clientId.length > 128 || /\s/u.test(clientId)) {
     throw new ConfigError('AURALIS_OAUTH_CLIENT_ID must be 8 to 128 non-whitespace characters.');
   }
@@ -120,7 +125,21 @@ function parseOAuthConfig(env) {
       `AURALIS_OAUTH_CLIENT_SECRET must be at least ${MIN_PUBLIC_TOKEN_LENGTH} characters without whitespace.`
     );
   }
-  return Object.freeze({ origin, clientId, clientSecret });
+  let parsedRedirect;
+  try {
+    parsedRedirect = new URL(redirectUri);
+  } catch {
+    throw new ConfigError('AURALIS_OAUTH_REDIRECT_URI must be an exact ChatGPT OAuth redirect URI.');
+  }
+  const redirectPathAllowed = parsedRedirect.pathname === '/connector_platform_oauth_redirect'
+    || /^\/connector\/oauth\/[A-Za-z0-9_-]+$/.test(parsedRedirect.pathname);
+  if (parsedRedirect.protocol !== 'https:' || parsedRedirect.hostname !== 'chatgpt.com'
+    || parsedRedirect.username || parsedRedirect.password || parsedRedirect.port
+    || parsedRedirect.search || parsedRedirect.hash || !redirectPathAllowed
+    || parsedRedirect.toString() !== redirectUri) {
+    throw new ConfigError('AURALIS_OAUTH_REDIRECT_URI must be an exact ChatGPT OAuth redirect URI.');
+  }
+  return Object.freeze({ origin, clientId, clientSecret, redirectUri });
 }
 
 function loadConfig(env = process.env) {

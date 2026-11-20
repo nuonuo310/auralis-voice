@@ -37,6 +37,23 @@ function normalizeOrigin(origin) {
   }
 }
 
+function normalizeRedirectUri(value) {
+  if (typeof value !== 'string' || value.length > 2048) return null;
+  try {
+    const parsed = new URL(value);
+    const supportedPath = parsed.pathname === '/connector_platform_oauth_redirect'
+      || /^\/connector\/oauth\/[A-Za-z0-9_-]+$/.test(parsed.pathname);
+    if (parsed.protocol !== 'https:' || parsed.hostname !== 'chatgpt.com'
+      || parsed.username || parsed.password || parsed.port || parsed.search || parsed.hash
+      || !supportedPath || parsed.toString() !== value) {
+      return null;
+    }
+    return value;
+  } catch {
+    return null;
+  }
+}
+
 function safeEqual(left, right) {
   const leftDigest = createHash('sha256').update(String(left), 'utf8').digest();
   const rightDigest = createHash('sha256').update(String(right), 'utf8').digest();
@@ -91,9 +108,11 @@ function parseBasicAuthorization(req) {
   }
 }
 
-function createOAuthRuntime({ origin, clientId, clientSecret, now = Date.now } = {}) {
+function createOAuthRuntime({ origin, clientId, clientSecret, redirectUri = CALLBACK_URL, now = Date.now } = {}) {
   const normalizedOrigin = normalizeOrigin(origin);
+  const normalizedRedirectUri = normalizeRedirectUri(redirectUri);
   if (!normalizedOrigin) throw new TypeError('A valid HTTPS OAuth origin is required.');
+  if (!normalizedRedirectUri) throw new TypeError('A valid ChatGPT OAuth redirect URI is required.');
   if (typeof clientId !== 'string' || clientId.length < 8 || clientId.length > 128 || /\s/u.test(clientId)) {
     throw new TypeError('A valid OAuth client ID is required.');
   }
@@ -186,7 +205,7 @@ function createOAuthRuntime({ origin, clientId, clientSecret, now = Date.now } =
       const record = codes.get(code);
       codes.delete(code);
       if (!record || record.expiresAt <= now()
-        || form.get('redirect_uri') !== CALLBACK_URL
+        || form.get('redirect_uri') !== normalizedRedirectUri
         || suppliedClient.clientId !== clientId) {
         sendJson(res, 400, { error: 'invalid_grant' });
         return;
@@ -276,7 +295,7 @@ function createOAuthRuntime({ origin, clientId, clientSecret, now = Date.now } =
       const challengeValue = url.searchParams.get('code_challenge') || '';
       const valid = url.searchParams.get('response_type') === 'code'
         && url.searchParams.get('client_id') === clientId
-        && url.searchParams.get('redirect_uri') === CALLBACK_URL
+        && url.searchParams.get('redirect_uri') === normalizedRedirectUri
         && url.searchParams.get('code_challenge_method') === 'S256'
         && /^[A-Za-z0-9_-]{43,128}$/.test(challengeValue)
         && scope.split(/\s+/u).includes(OAUTH_SCOPE)
@@ -294,7 +313,7 @@ function createOAuthRuntime({ origin, clientId, clientSecret, now = Date.now } =
       }
       const code = tokenValue(32);
       codes.set(code, { challenge: challengeValue, expiresAt: now() + AUTHORIZATION_CODE_TTL_MS });
-      const redirect = new URL(CALLBACK_URL);
+      const redirect = new URL(normalizedRedirectUri);
       redirect.searchParams.set('code', code);
       redirect.searchParams.set('state', state);
       res.writeHead(302, {
@@ -316,7 +335,7 @@ function createOAuthRuntime({ origin, clientId, clientSecret, now = Date.now } =
   }
 
   return Object.freeze({
-    callbackUrl: CALLBACK_URL,
+    callbackUrl: normalizedRedirectUri,
     challenge,
     clientId,
     handle,
@@ -336,5 +355,6 @@ module.exports = {
   MAX_PENDING_CODES,
   createOAuthRuntime,
   normalizeOrigin,
+  normalizeRedirectUri,
   safeEqual
 };

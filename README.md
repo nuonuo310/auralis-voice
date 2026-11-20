@@ -52,6 +52,7 @@ V1 不包含账号、收藏、声音馆、长期记忆、Dashboard、多用户�
    AURALIS_PUBLIC_ORIGIN=
    AURALIS_OAUTH_CLIENT_ID=
    AURALIS_OAUTH_CLIENT_SECRET=
+   AURALIS_OAUTH_REDIRECT_URI=
    ```
 
    `MINIMAX_GROUP_ID` 在新版平台通常留空；只有旧账号明确获得 GroupId 时才填写。`PUBLIC_V1_ACCESS_TOKEN` 在仅监听 loopback 的本地开发中可以留空。
@@ -86,6 +87,7 @@ V1 不包含账号、收藏、声音馆、长期记忆、Dashboard、多用户�
 | `AURALIS_PUBLIC_ORIGIN` | MCP 时必填 | 部署服务的精确 HTTPS origin，例如 `https://example.onrender.com` |
 | `AURALIS_OAUTH_CLIENT_ID` | MCP 时必填 | ChatGPT 私有连接使用的公开客户端标识 |
 | `AURALIS_OAUTH_CLIENT_SECRET` | MCP 时必填 | 至少 32 字符的 OAuth 客户端密钥；不得写入仓库或前端 |
+| `AURALIS_OAUTH_REDIRECT_URI` | MCP 时建议显式填写 | ChatGPT 为本次私有连接显示的精确 Callback URL |
 | `HOST` | 否 | 默认 `127.0.0.1`；部署平台通常设为 `0.0.0.0` |
 | `PORT` | 否 | 默认 `3000`；部署平台应使用其注入值 |
 
@@ -145,7 +147,7 @@ API Key、GroupId、`voice_id` 和模型始终只来自服务端环境。
 - Server URL：`https://你的部署域名/mcp`
 - Authentication：`OAuth`
 - Registration method：`User-Defined OAuth Client`
-- Callback URL：服务端只接受 ChatGPT 显示的 `https://chatgpt.com/connector_platform_oauth_redirect`
+- Callback URL：先复制 ChatGPT 高级设置为本次连接显示的完整地址，填入服务端 `AURALIS_OAUTH_REDIRECT_URI` 并重新部署；服务端只接受这一个精确地址
 - OAuth client ID / secret：分别填写服务端的 `AURALIS_OAUTH_CLIENT_ID` / `AURALIS_OAUTH_CLIENT_SECRET`
 - Token endpoint auth method：`client_secret_post`
 - Scope：`voice:speak`
