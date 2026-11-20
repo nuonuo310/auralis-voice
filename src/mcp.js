@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const MCP_PATH = '/mcp';
-const RESOURCE_URI = 'ui://auralis-voice/cat-ear-player-v5.html';
+const RESOURCE_URI = 'ui://auralis-voice/cat-ear-player-v5-chat-v2.html';
 const MAX_AUDIO_BYTES = 8 * 1024 * 1024;
 const PLAYER_SOURCE_PATH = path.join(__dirname, '..', 'public', 'player', 'cat-ear-player.js');
 
@@ -104,7 +104,7 @@ window.addEventListener('message', (event) => {
 
 player.previewState('loading');
 request('ui/initialize', {
-  appInfo: { name: 'auralis-voice-player', version: '1.0.0' },
+  appInfo: { name: 'auralis-voice-player', version: '1.0.1' },
   appCapabilities: {},
   protocolVersion: '2026-01-26'
 }).then(() => notify('ui/notifications/initialized', {})).catch(() => {
@@ -182,7 +182,7 @@ function createAuralisMcpRuntime({ adapter, gate, oauth } = {}) {
       RESOURCE_MIME_TYPE,
       z
     } = await loadModules();
-    const server = new McpServer({ name: 'auralis-voice', version: '1.0.0' });
+    const server = new McpServer({ name: 'auralis-voice', version: '1.0.1' });
     const oauthSecurity = [{ type: 'oauth2', scopes: ['voice:speak'] }];
 
     registerAppResource(
