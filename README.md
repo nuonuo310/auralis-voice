@@ -1,79 +1,98 @@
 # Auralis Voice
 
-Auralis Voice 是一套可公开分发、由部署者自行运行的轻量 MiniMax 中国区 TTS 语音系统，包含本地服务、安全接口、GPT 电脑端接入所需契约和猫耳播放界面。它不是项目作者向陌生人提供的共享付费语音实例：每位部署者都使用自己的 MiniMax API Key、`voice_id`、模型和访问令牌。
+> A self-hosted MiniMax China TTS bridge for local apps and ChatGPT, with a
+> secure API, OAuth-protected MCP integration, and an animated cat-ear player.
 
-项目不提供公开默认 `voice_id`，也不包含任何真实密钥、私人音色或私人项目资产。
+Auralis Voice 是一套可自行部署的轻量语音系统。它把 MiniMax 中国区 TTS、
+服务端安全门禁、ChatGPT 私有 MCP 接入和猫耳播放界面整理成一个通用仓库。
 
-## V1 能做什么
+每位部署者使用自己的 MiniMax API Key、`voice_id`、模型和访问令牌。仓库不提供
+共享付费实例，也不包含真实密钥、私人音色、私人域名或私人项目资产。
 
-- 服务端调用 MiniMax 中国区 `https://api.minimaxi.com/v1/t2a_v2`，返回经校验的 16 kHz 单声道 PCM WAV。
-- 猫耳播放器包含 `idle`、`loading`、`playing`、`paused`、`ended` 五态和由真实音频事件驱动的动态声波。
-- 一次 MiniMax 中国区真实 smoke 已成功完成生成和播放。
-- `/api/tts` 已有 Bearer 鉴权、单实例内存限流（6 次/60 秒）和单并发保护。
+## 特性
+
+- 固定调用 MiniMax 中国区 `t2a_v2`，输出并严格校验 16 kHz 单声道 PCM WAV。
+- 提供两条接入线路：Bearer 保护的 REST API，以及 OAuth 保护的 ChatGPT MCP。
+- 在鉴权、限流或并发门禁失败时，不调用上游 provider。
+- 猫耳播放器包含 `idle`、`loading`、`playing`、`paused`、`ended` 五态。
+- MCP 气泡只有在 WAV 结构和时长通过校验后才允许播放；失败不会伪装成可播放。
+- 单实例默认限制为 6 次/60 秒、同时最多 1 项真实合成。
+- 默认只监听 `127.0.0.1`；非 loopback 启动时强制要求访问令牌。
 - Breeze 仅保留 adapter 占位，不进入 V1 运行链路。
 
-V1 不包含账号、收藏、声音馆、长期记忆、Dashboard、多用户后台或完整主题系统。
+## 系统线路
 
-## 环境要求
+```mermaid
+flowchart LR
+    U["用户或本地宿主"] --> C["ChatGPT MCP / REST 客户端"]
+    C --> A["OAuth 或 Bearer 鉴权"]
+    A --> G["限流与单并发门禁"]
+    G --> M["MiniMax 中国区 TTS"]
+    M --> V["PCM WAV 严格校验"]
+    V --> P["猫耳播放器"]
+```
 
-- Node.js 20。
-- MiniMax 中国区账号。
-- 部署者自己的 API Key、`voice_id` 和模型名称。
+更完整的请求、音频和播放状态线路见
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)。
 
-项目使用官方 Model Context Protocol SDK、MCP Apps 扩展与 Zod 来提供可选的 ChatGPT 私有 MCP 连接。
+## 当前状态
 
-## 全新文件夹本地部署
+- 公开基线：`0.1.0`
+- 离线测试：`77/77` 通过
+- JavaScript 语法检查与视觉哈希锁：通过
+- REST、OAuth MCP、MiniMax 中国区真实生成和 ChatGPT 猫耳气泡播放：已验收
+- 播放键仅在音频就绪后可用；播放时布局保持稳定
 
-1. 将项目文件放入一个全新文件夹并进入项目根目录。
-2. 安装项目依赖：
+当前限制：OAuth 授权码、访问令牌和刷新令牌只保存在单个服务进程内存中。
+服务重新部署或重启后，ChatGPT 连接需要重新授权。需要多实例或无感重启时，
+应先替换为受保护的持久化令牌存储。
 
-   ```text
-   npm install
-   ```
+## 快速开始
 
-   这一步会安装 MCP 服务与猫耳组件宿主所需的固定依赖。
+环境要求：Node.js 20 或更高版本，以及部署者自己的 MiniMax 中国区配置。
 
-3. 运行离线测试：
+```text
+npm install
+npm test
+```
 
-   ```text
-   npm test
-   ```
+复制 `.env.example` 为 `.env`，至少填写：
 
-   当前发布基线应为 73/73 通过、0 失败。
+```dotenv
+MINIMAX_API_KEY=
+MINIMAX_GROUP_ID=
+MINIMAX_VOICE_ID=
+MINIMAX_MODEL=
+```
 
-4. 将 `.env.example` 复制为 `.env`，填写部署者自己的值：
+`MINIMAX_GROUP_ID` 在新版平台通常留空；旧账号只有在平台明确提供时才填写。
 
-   ```dotenv
-   MINIMAX_API_KEY=
-   MINIMAX_GROUP_ID=
-   MINIMAX_VOICE_ID=
-   MINIMAX_MODEL=
-   PUBLIC_V1_ACCESS_TOKEN=
-   AURALIS_PUBLIC_ORIGIN=
-   AURALIS_OAUTH_CLIENT_ID=
-   AURALIS_OAUTH_CLIENT_SECRET=
-   AURALIS_OAUTH_REDIRECT_URI=
-   ```
+本地启动：
 
-   `MINIMAX_GROUP_ID` 在新版平台通常留空；只有旧账号明确获得 GroupId 时才填写。`PUBLIC_V1_ACCESS_TOKEN` 在仅监听 loopback 的本地开发中可以留空。
+```text
+node --env-file=.env src/server.js
+```
 
-5. 使用 Node 自带的环境文件加载启动：
+默认地址：
 
-   ```text
-   node --env-file=.env src/server.js
-   ```
+- 健康检查：`http://127.0.0.1:3000/health`
+- 播放器预览：`http://127.0.0.1:3000/player/preview.html`
+- 受控 smoke：`http://127.0.0.1:3000/player/smoke.html`
 
-   默认只监听 `127.0.0.1:3000`。
+`smoke.html` 只用于部署者进行单次真实验收，不是产品入口。不要提交、上传或
+公开 `.env`。
 
-6. 检查健康状态：
+## 选择接入方式
 
-   ```text
-   http://127.0.0.1:3000/health
-   ```
+| 方式 | 入口 | 适用场景 | 鉴权 |
+| --- | --- | --- | --- |
+| REST | `POST /api/tts` | 本地应用、桌面宿主、自建前端 | Bearer token |
+| ChatGPT MCP | `/mcp` | ChatGPT 私有插件与猫耳气泡 | OAuth 2.0 + PKCE |
+| 视觉预览 | `/player/preview.html` | 不调用 TTS 的五态检查 | 无 |
 
-7. 打开 `http://127.0.0.1:3000/player/preview.html` 验收五态视觉。`/player/smoke.html` 只供部署者进行受控的单次真实 TTS 验收，不是正式产品入口。
-
-不要提交、上传或公开 `.env`。
+REST 的请求、错误码和播放器方法见
+[`docs/PLAYER-CONTRACT.md`](docs/PLAYER-CONTRACT.md)。部署与 ChatGPT 连接步骤见
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)。
 
 ## 服务端配置
 
@@ -83,83 +102,61 @@ V1 不包含账号、收藏、声音馆、长期记忆、Dashboard、多用户�
 | `MINIMAX_GROUP_ID` | 否 | 新版平台通常留空；旧账号按平台提供值填写 |
 | `MINIMAX_VOICE_ID` | 是 | 部署者自己的音色 ID |
 | `MINIMAX_MODEL` | 是 | MiniMax 模型名称 |
-| `PUBLIC_V1_ACCESS_TOKEN` | 见下文 | 非 loopback 部署强制要求的访问令牌 |
-| `AURALIS_PUBLIC_ORIGIN` | MCP 时必填 | 部署服务的精确 HTTPS origin，例如 `https://example.onrender.com` |
-| `AURALIS_OAUTH_CLIENT_ID` | MCP 时必填 | ChatGPT 私有连接使用的公开客户端标识 |
-| `AURALIS_OAUTH_CLIENT_SECRET` | MCP 时必填 | 至少 32 字符的 OAuth 客户端密钥；不得写入仓库或前端 |
-| `AURALIS_OAUTH_REDIRECT_URI` | MCP 时建议显式填写 | ChatGPT 为本次私有连接显示的精确 Callback URL |
-| `HOST` | 否 | 默认 `127.0.0.1`；部署平台通常设为 `0.0.0.0` |
-| `PORT` | 否 | 默认 `3000`；部署平台应使用其注入值 |
+| `PUBLIC_V1_ACCESS_TOKEN` | 生产必填 | 非 loopback 时至少 32 字符且不含空白 |
+| `AURALIS_PUBLIC_ORIGIN` | 启用 MCP 时必填 | 部署服务的精确 HTTPS origin |
+| `AURALIS_OAUTH_CLIENT_ID` | 启用 MCP 时必填 | OAuth 客户端标识，8 至 128 个无空白字符 |
+| `AURALIS_OAUTH_CLIENT_SECRET` | 启用 MCP 时必填 | 至少 32 字符的服务端密钥 |
+| `AURALIS_OAUTH_REDIRECT_URI` | 启用 MCP 时建议填写 | ChatGPT 显示的精确 Callback URL |
+| `HOST` | 否 | 默认 `127.0.0.1`；云部署通常设为 `0.0.0.0` |
+| `PORT` | 否 | 默认 `3000`；云平台使用其注入值 |
 
-服务端固定使用 MiniMax 中国区端点，不接受客户端覆盖 API Key、GroupId、`voice_id`、模型或端点。
+API Key、GroupId、`voice_id`、模型和上游端点只来自服务端环境，客户端不能覆盖。
 
-## 访问令牌与使用边界
+## 安全边界
 
 - loopback 本地开发可以不配置 `PUBLIC_V1_ACCESS_TOKEN`。
-- 当 `HOST` 不是 loopback 时，服务拒绝在缺少有效令牌的情况下启动。令牌必须至少 32 个字符且不能包含空白。
-- 受保护的 `POST /api/tts` 请求必须包含 `Authorization: Bearer <token>`。
-- `/health` 和固定播放器静态文件不要求令牌。
-- 真实令牌不得写入仓库、公开静态页、示例、客户端源码或日志。
+- 非 loopback 部署缺少合格令牌时，服务拒绝启动。
+- `POST /api/tts` 只接受 `{ "text": "..." }`，未知字段会被拒绝。
+- 静态文件使用固定白名单；`.env`、源码和目录列表不会被服务端公开。
+- 错误响应不会包含密钥、令牌、GroupId、`voice_id`、堆栈或上游完整响应。
+- 共享浏览器令牌不是多用户账号系统。本 V1 适合个人自用或小范围受控接入。
 
-共享浏览器令牌不是账号系统，无法安全服务无限陌生用户。本 V1 适用于部署者自用或小范围受控接入；若需要面向陌生用户开放，必须另行设计正式身份、配额和计费保护，不属于 V1。
+若要向不受信任的陌生用户开放，必须另行设计正式身份、持久化配额、计费保护和
+审计，不应直接复用本 V1 的共享令牌模型。
 
-## API 与播放器
+## 项目结构
 
-- `GET /health`：返回服务状态和 provider 名称。
-- `POST /api/tts`：请求体只允许 `{ "text": "..." }`，当前 MiniMax 适配器成功时直接返回 `audio/wav`。
-- `GET /player/preview.html`：离线五态视觉预览。
-- `GET /player/smoke.html`：部署者受控的一次性真实验收页。
-- `POST /mcp`：可选的 OAuth 保护 MCP 入口，仅向已连接的 ChatGPT 私有插件提供语音工具和猫耳组件。
+```text
+src/                    HTTP、OAuth、MCP、安全门禁与 provider adapters
+public/player/          锁定的猫耳播放器、视觉母版与预览页
+test/                   离线回归、安全负例、MCP 与视觉锁测试
+test-support/           测试用 WAV 构造工具
+docs/ARCHITECTURE.md    两条接入线路与状态不变量
+docs/DEPLOYMENT.md      本地、Render 与 ChatGPT MCP 部署步骤
+docs/PLAYER-CONTRACT.md REST 与播放器稳定契约
+STATUS.md               当前验收事实与已知限制
+```
 
-完整请求、错误码、播放器方法、事件和受保护宿主接入示例见 [`docs/PLAYER-CONTRACT.md`](docs/PLAYER-CONTRACT.md)。
-
-`player.config.json` 只是颜色示例，不会被组件自动读取。运行时颜色以元素属性为准：
+`player.config.json` 只是颜色示例，不会被组件自动读取。运行时颜色通过元素属性设置：
 
 ```html
 <cat-ear-player color="#D8CEF2"></cat-ear-player>
 ```
 
-API Key、GroupId、`voice_id` 和模型始终只来自服务端环境。
+## 文档
 
-## Render 手工部署
+- [架构与调用线路](docs/ARCHITECTURE.md)
+- [部署与 ChatGPT 连接](docs/DEPLOYMENT.md)
+- [播放器与 REST 契约](docs/PLAYER-CONTRACT.md)
+- [当前状态](STATUS.md)
+- [版本记录](CHANGELOG.md)
 
-本节只是公开部署说明，不会自动创建任何外部资源。
+## 范围外功能
 
-在全新的 Render Web Service 中使用：
+V1 不包含账号、收藏、声音馆、长期记忆、Dashboard、多用户后台、完整主题系统，
+也不实现 Breeze TTS。
 
-- Runtime：Node
-- Node：20
-- Start Command：`npm start`
-- Health Check Path：`/health`
-- `HOST=0.0.0.0`
-- `PORT`：使用 Render 自动注入的值，不要固定填写
-- 配置 `MINIMAX_API_KEY`、`MINIMAX_VOICE_ID`、`MINIMAX_MODEL` 和至少 32 字符、无空白的 `PUBLIC_V1_ACCESS_TOKEN`
-- `MINIMAX_GROUP_ID`：新版平台留空；旧账号按平台提供值填写
-- 若启用 ChatGPT 私有 MCP，再配置 `AURALIS_PUBLIC_ORIGIN`、`AURALIS_OAUTH_CLIENT_ID` 和至少 32 字符的 `AURALIS_OAUTH_CLIENT_SECRET`
+## License
 
-部署后先检查 `/health`，再按接入契约由受控宿主携带 Bearer 令牌请求 `/api/tts`。不要把令牌写进公开的 `preview.html`、`smoke.html` 或其他静态文件。
-
-## ChatGPT 私有 MCP 连接
-
-部署完成后，在 ChatGPT 的 Plugins 页面选择 **Add → Add custom MCP server**：
-
-- Name：`Auralis Voice`
-- Server URL：`https://你的部署域名/mcp`
-- Authentication：`OAuth`
-- Registration method：`User-Defined OAuth Client`
-- Callback URL：先复制 ChatGPT 高级设置为本次连接显示的完整地址，填入服务端 `AURALIS_OAUTH_REDIRECT_URI` 并重新部署；服务端只接受这一个精确地址
-- OAuth client ID / secret：分别填写服务端的 `AURALIS_OAUTH_CLIENT_ID` / `AURALIS_OAUTH_CLIENT_SECRET`
-- Token endpoint auth method：`client_secret_post`
-- Scope：`voice:speak`
-
-OAuth 授权码使用 PKCE S256、五分钟单次有效；访问令牌和刷新令牌只保存在服务进程内存中。部署重启后需要重新连接，这是 V1 的有意安全边界。插件工具只有在用户明确要求听语音时才应调用；播放器音频通过组件专用元数据交付，不进入普通模型文本。
-
-## 范围与发布门禁
-
-- 猫耳播放器的视觉、圆角、内部间距、默认配色和五态动画含义已经锁定。
-- V1 只实现 MiniMax；Breeze 不在本版本实现。
-- 本版本不会自动公开、部署或创建 Render 资源；这些外部操作由部署者在确认配置和费用边界后自行执行。
-
-## 许可证
-
-本项目使用 [MIT License](LICENSE)。任何人可以在保留版权与许可声明的前提下使用、修改和分发代码；部署者仍须自行遵守 MiniMax 等第三方服务的条款并保护自己的密钥、音色与访问令牌。
+本项目使用 [MIT License](LICENSE)。部署者仍须自行遵守 MiniMax 等第三方服务的
+条款，并保护自己的密钥、音色、访问令牌与使用额度。

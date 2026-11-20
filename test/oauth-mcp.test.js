@@ -259,7 +259,7 @@ test('authorized MCP generates exactly once and delivers validated WAV only to t
         jsonrpc: '2.0',
         id: 3,
         method: 'tools/call',
-        params: { name: 'speak_with_auralis', arguments: { text: '糯糯，过来让哥哥抱一下。' } }
+        params: { name: 'speak_with_auralis', arguments: { text: '这是一次公开测试语音。' } }
       })
     });
     assert.equal(called.status, 200);

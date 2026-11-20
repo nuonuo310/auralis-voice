@@ -1,13 +1,33 @@
 # STATUS
 
-- 工作区：本文件所在项目根目录；发布包不固定本机绝对路径。
-- 真实 smoke：MiniMax 中国区固定短句已成功生成，并由猫耳气泡实际播放一次。
-- 视觉锁定：v5 播放器仍为 `e31b5de45bb44ab92fadbc23240187f135e8abf2db4d84fd5a6e1b478ca59e3f`，未修改。
-- 安全门禁：loopback 可无令牌本地开发；非 loopback 强制至少 32 字符、无空白的 `PUBLIC_V1_ACCESS_TOKEN`；Bearer 鉴权、6 次/60 秒限流和单并发保护已接入。
-- OAuth MCP：已实现受保护资源发现、固定 ChatGPT 回调、PKCE S256、授权码单次使用、内存访问/刷新令牌和 `voice:speak` 范围；猫耳组件通过组件专用元数据接收已校验 WAV，并在用户手势内通过 Web Audio 解码播放。
-- 回归：完整离线测试 77/77 通过、0 失败；OAuth/MCP、WAV 校验与 Web Audio 门禁、安全负例、Breeze 占位兼容和视觉锁定均已覆盖。
-- 文档：公开 README、Render 手工部署说明和正式宿主接入契约已收口；不含公开默认 `voice_id`。
-- 干净验收：完整项目已复制到全新文件夹；仅凭公开 README 完成 68/68 测试、环境文件启动命令、健康检查、固定静态路由、敏感路径 404、`GET /api/tts` 405 与视觉哈希复验，真实 provider 调用 0。
-- 公开发布：最终门禁通过后，`nuonuo310/auralis-voice` 已由 Private 改为 Public；默认分支为 `main`，发布基线提交为 `86367a13fc59cbc3781f63372f67746e78202229`。
-- 许可证：项目所有者已批准 MIT License；版权声明使用 `Auralis Voice contributors`，不含私人姓名。
-- 下一步：部署 OAuth MCP 更新并在 ChatGPT 后台手动建立 `Auralis Voice` 私有 MCP 连接，随后只做一次真实语音验收。
+更新时间：2026-11-20
+
+## 当前基线
+
+- 版本：`0.1.0`，公开仓库默认分支为 `main`。
+- MiniMax：固定中国区 `t2a_v2`；服务端输出并验证 16 kHz 单声道 PCM16 WAV。
+- REST：Bearer 鉴权、6 次/60 秒单实例限流、单并发保护和固定错误结构已接入。
+- ChatGPT MCP：OAuth 2.0 + PKCE、`voice:speak` scope 和 `speak_with_auralis` 工具已接入。
+- 猫耳气泡：音频通过结构校验并取得真实时长后才可播放；播放、暂停、继续、播完与字幕已验收；点击播放不改变外层高度。
+- Breeze：仅保留 adapter 占位，不进入 V1 运行链路。
+
+## 验证事实
+
+- 完整离线测试：`77/77` 通过，0 失败。
+- MiniMax 中国区真实生成：通过。
+- REST 与 ChatGPT MCP 猫耳气泡实际播放：通过。
+- 文档收口阶段真实 provider 调用：0。
+- 播放器视觉锁：`e31b5de45bb44ab92fadbc23240187f135e8abf2db4d84fd5a6e1b478ca59e3f`。
+- smoke 文件锁：`fee6bd3dc06f09dc759abdef230b243a898fa12a11ed2d09ef443662eb61b5f9`。
+- 公开文档不含真实密钥、令牌、GroupId、`voice_id`、私人称呼、本机绝对路径或私人域名。
+
+## 已知限制
+
+- OAuth 授权码、access token、refresh token 和限流状态保存在单进程内存中。
+- 服务重启或重新部署后，ChatGPT 连接可能需要 `Reconnect` 并 `Refresh tools`。
+- V1 适合个人自用或小范围受控接入；不提供公开多用户身份、持久化配额或计费系统。
+
+## 发布安排
+
+- 仓库文档、部署线路、接入契约和版本记录已收口。
+- 下一步只安排 2026-11-21 晚间的公开内容发布；发布前不再更改功能或重复真实 TTS。

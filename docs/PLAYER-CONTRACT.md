@@ -84,7 +84,7 @@ loopback 本地开发未配置 `PUBLIC_V1_ACCESS_TOKEN` 时可省略 Authorizati
 | 502 | `PROVIDER_HTTP_ERROR` | MiniMax 返回 HTTP 错误 |
 | 502 | `PROVIDER_BUSINESS_ERROR` | MiniMax 返回业务错误 |
 | 502 | `PROVIDER_INVALID_RESPONSE` | MiniMax 响应结构无效 |
-| 502 | `PROVIDER_INVALID_AUDIO` | 音频为空或不是严格 hex |
+| 502 | `PROVIDER_INVALID_AUDIO` | 上游音频编码无效，或未满足 PCM WAV 契约 |
 | 502 | `PROVIDER_NETWORK_ERROR` | MiniMax 网络不可达 |
 | 504 | `PROVIDER_TIMEOUT` | MiniMax 请求超过 120 秒 |
 | 500 | `INTERNAL_ERROR` | 服务端内部错误 |
@@ -159,3 +159,19 @@ async function loadVoiceIntoPlayer({ player, text, accessToken }) {
 ```
 
 示例中的 `accessToken` 是调用参数，不是可直接使用的示例令牌。正式宿主应同源接入；V1 不开放通配 CORS。
+
+## ChatGPT MCP 气泡契约
+
+ChatGPT 私有插件通过 `/mcp` 和 OAuth 2.0 + PKCE 接入，固定工具名为
+`speak_with_auralis`，所需 scope 为 `voice:speak`。
+
+- 每次成功工具调用最多执行一次真实 provider 合成，不自动重试或付费 fallback。
+- 返回给模型的文本内容不携带音频正文；音频只放在组件专用私有元数据中。
+- 气泡先验证 WAV 容器、PCM 格式、采样率、声道、数据长度和真实时长。
+- 验证完成前播放键保持禁用；失败时不得呈现“看起来可以播放”的状态。
+- 播放在用户点击手势中通过 Web Audio 解码并启动，避免宿主自动播放限制。
+- 气泡外层固定为 `276 × 69` CSS 像素并左对齐；字幕位于气泡下方。
+- `idle`、播放中、暂停和播完状态切换不得改变外层高度，避免聊天内容上下跳动。
+
+MCP 路线不要求也不允许把 `PUBLIC_V1_ACCESS_TOKEN`、MiniMax API Key 或 OAuth
+client secret 放进组件、工具参数或模型可见文本。
