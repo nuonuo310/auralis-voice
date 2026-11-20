@@ -8,5 +8,6 @@
 - 文档：公开 README、Render 手工部署说明和正式宿主接入契约已收口；不含公开默认 `voice_id`。
 - 干净验收：完整项目已复制到全新文件夹；仅凭公开 README 完成 68/68 测试、环境文件启动命令、健康检查、固定静态路由、敏感路径 404、`GET /api/tts` 405 与视觉哈希复验，真实 provider 调用 0。
 - 私有归档：首次干净推送已进入 `nuonuo310/auralis-voice` 的 `main`，远端文件树与本地候选逐字节一致且不含 `.env`。
+- 许可证：项目所有者已批准 MIT License；版权声明使用 `Auralis Voice contributors`，不含私人姓名。
 - 下一步：等待项目所有者另行授权公开发布或创建全新 Render 服务；获准前仓库保持 Private。
 - 发布门禁：尚未获准公开仓库、部署或创建 Render 资源。
