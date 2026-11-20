@@ -13,10 +13,11 @@
 ### Included
 
 - MiniMax 中国区 `t2a_v2` 服务端适配与 GroupId 新旧平台兼容。
+- 本地 TTS provider adapter 扩展位；Breeze 占位保持 fail-closed，不进入 V1 运行链路。
 - 16 kHz 单声道 PCM16 WAV 转换、结构校验和真实时长解析。
 - Bearer 保护的 `POST /api/tts`，包含 6 次/60 秒内存限流与单并发保护。
 - OAuth 2.0 + PKCE 保护的 ChatGPT MCP，工具名为 `speak_with_auralis`。
-- 锁定的猫耳播放器、五态、声波、字幕和 ChatGPT 内嵌气泡。
+- 锁定的猫耳播放器、双耳错峰状态动画、动态声波、字幕和 ChatGPT 内嵌气泡。
 - 音频未就绪时禁止播放；通过 WAV 校验后才显示可用按钮与真实时长。
 - 默认 loopback 监听、固定静态白名单和敏感路径拒绝。
 - MIT License、部署说明、架构线路和稳定接入契约。

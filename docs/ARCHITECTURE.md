@@ -10,10 +10,27 @@
 | `src/server.js` | HTTP 路由、静态白名单、REST 请求验证 | 保存用户账号或音频 |
 | `src/tts-gate.js` | Bearer 校验、6 次/60 秒限流、单并发 | 分布式配额 |
 | `src/adapters/minimax.js` | 调用 MiniMax 中国区并规范化响应 | 接受客户端覆盖模型参数 |
+| `src/adapters/breeze.js` | 保留本地 TTS provider 扩展位 | 在 V1 中执行真实生成 |
 | `src/wav.js` | 校验 16 kHz、单声道、PCM16 WAV | 转码任意音频格式 |
 | `src/oauth.js` | OAuth 发现、PKCE、授权码与令牌 | 持久化令牌存储 |
 | `src/mcp.js` | MCP 工具、私有音频元数据、ChatGPT 气泡宿主 | 把音频写进普通模型文本 |
 | `cat-ear-player.js` | 锁定视觉、五态与基础播放控制 | 服务端鉴权与计费保护 |
+
+## Provider 扩展边界
+
+V1 的真实生成线路固定使用 MiniMax，但服务端保留 provider adapter 边界，方便以后接入
+本地 TTS。当前 `breeze.js` 是 fail-closed 占位：调用时只返回
+`ADAPTER_NOT_IMPLEMENTED`，不会静默切换、自动重试或回退到付费 provider。
+
+未来本地 adapter 若要进入运行链路，至少必须满足：
+
+- 接受服务端已经验证过的文本和中止信号。
+- 返回 16 kHz、单声道、PCM16 WAV，或在进入播放器前完成同等严格的规范化。
+- 复用现有鉴权、限流、单并发、错误脱敏和真实音频校验。
+- 由部署者明确选择 provider；失败时不自动改走另一条可能计费的线路。
+
+`POST /api/tts` 是本地应用接口，provider adapter 是生成引擎接口。两者彼此独立，
+因此保留本地引擎扩展位不会改变现有 REST 或 ChatGPT MCP 的稳定契约。
 
 ## REST 线路
 
