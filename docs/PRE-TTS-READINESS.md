@@ -2,7 +2,7 @@
 
 日期：2026-11-20
 
-本文件保留公开 Voice V1 从无密钥预检到真实 smoke、再到安全收口的最终事实。它不包含任何真实密钥、令牌、GroupId 或 `voice_id`。
+本文件保留 Auralis Voice 从无密钥预检到真实 smoke、再到安全收口的最终事实。它不包含任何真实密钥、令牌、GroupId 或 `voice_id`。
 
 ## 当前结论
 

@@ -1,8 +1,8 @@
 {
-  "name": "public-voice-v1",
+  "name": "auralis-voice",
   "version": "0.1.0",
   "private": true,
-  "description": "Minimal MiniMax TTS service and player integration contract for public Voice V1.",
+  "description": "Self-hosted MiniMax China TTS voice suite for GPT desktop with a secure API and animated playback UI.",
   "type": "commonjs",
   "engines": {
     "node": ">=20"
