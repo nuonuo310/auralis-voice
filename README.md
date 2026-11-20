@@ -6,7 +6,7 @@ Auralis Voice 是一套可公开分发、由部署者自行运行的轻量 MiniM
 
 ## V1 能做什么
 
-- 服务端调用 MiniMax 中国区 `https://api.minimaxi.com/v1/t2a_v2`，返回 MP3。
+- 服务端调用 MiniMax 中国区 `https://api.minimaxi.com/v1/t2a_v2`，返回经校验的 16 kHz 单声道 PCM WAV。
 - 猫耳播放器包含 `idle`、`loading`、`playing`、`paused`、`ended` 五态和由真实音频事件驱动的动态声波。
 - 一次 MiniMax 中国区真实 smoke 已成功完成生成和播放。
 - `/api/tts` 已有 Bearer 鉴权、单实例内存限流（6 次/60 秒）和单并发保护。
@@ -106,7 +106,7 @@ V1 不包含账号、收藏、声音馆、长期记忆、Dashboard、多用户�
 ## API 与播放器
 
 - `GET /health`：返回服务状态和 provider 名称。
-- `POST /api/tts`：请求体只允许 `{ "text": "..." }`，成功时直接返回 `audio/mpeg`。
+- `POST /api/tts`：请求体只允许 `{ "text": "..." }`，当前 MiniMax 适配器成功时直接返回 `audio/wav`。
 - `GET /player/preview.html`：离线五态视觉预览。
 - `GET /player/smoke.html`：部署者受控的一次性真实验收页。
 - `POST /mcp`：可选的 OAuth 保护 MCP 入口，仅向已连接的 ChatGPT 私有插件提供语音工具和猫耳组件。

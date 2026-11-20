@@ -2,10 +2,12 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { validatePcmWav } = require('./wav');
 
 const MCP_PATH = '/mcp';
 const LEGACY_RESOURCE_URI = 'ui://auralis-voice/cat-ear-player-v5.html';
-const RESOURCE_URI = 'ui://auralis-voice/cat-ear-player-v5-chat-v2.html';
+const PREVIOUS_RESOURCE_URI = 'ui://auralis-voice/cat-ear-player-v5-chat-v2.html';
+const RESOURCE_URI = 'ui://auralis-voice/cat-ear-player-v5-chat-v3.html';
 const MAX_AUDIO_BYTES = 8 * 1024 * 1024;
 const PLAYER_SOURCE_PATH = path.join(__dirname, '..', 'public', 'player', 'cat-ear-player.js');
 
@@ -39,8 +41,13 @@ function buildWidgetHtml(playerSource) {
 const player = document.querySelector('#auralis-player');
 const status = document.querySelector('#auralis-status');
 const subtitle = document.querySelector('#auralis-subtitle');
+const control = player.shadowRoot.querySelector('.control');
+const time = player.shadowRoot.querySelector('.time');
 let rpcId = 0;
 const pending = new Map();
+let media = null;
+let playback = null;
+let playbackToken = 0;
 
 function notify(method, params) {
   window.parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
@@ -58,34 +65,233 @@ function request(method, params) {
   });
 }
 
+function wavAscii(bytes, start, end) {
+  let value = '';
+  for (let index = start; index < end; index += 1) value += String.fromCharCode(bytes[index]);
+  return value;
+}
+
+function wavU16(bytes, position) {
+  return bytes[position] | (bytes[position + 1] << 8);
+}
+
+function wavU32(bytes, position) {
+  return (bytes[position] | (bytes[position + 1] << 8)
+    | (bytes[position + 2] << 16) | (bytes[position + 3] << 24)) >>> 0;
+}
+
 function decodeAudio(record) {
-  if (!record || record.audioMimeType !== 'audio/mpeg'
+  if (!record || record.source !== 'minimax' || record.generated !== true
+    || record.audioUrl !== undefined || record.audioMimeType !== 'audio/wav'
+    || typeof record.durationSeconds !== 'number'
+    || !Number.isFinite(record.durationSeconds)
     || typeof record.audioBase64 !== 'string'
-    || record.audioBase64.length < 100
-    || record.audioBase64.length > 12000000
+    || record.audioBase64.length < 100 || record.audioBase64.length > 3000000
+    || record.audioBase64.length % 4 !== 0
     || !/^[A-Za-z0-9+/]+={0,2}$/.test(record.audioBase64)) {
     throw new Error('INVALID_AUDIO');
   }
-  const raw = atob(record.audioBase64);
-  if (raw.length < 64 || raw.length > 8388608) throw new Error('INVALID_AUDIO');
+  let raw;
+  try {
+    raw = atob(record.audioBase64);
+  } catch {
+    throw new Error('INVALID_AUDIO');
+  }
+  if (raw.length < 44 || raw.length > 2097152 || btoa(raw) !== record.audioBase64) {
+    throw new Error('INVALID_AUDIO');
+  }
   const bytes = new Uint8Array(raw.length);
   for (let index = 0; index < raw.length; index += 1) bytes[index] = raw.charCodeAt(index);
-  return new Blob([bytes], { type: 'audio/mpeg' });
+  if (wavAscii(bytes, 0, 4) !== 'RIFF' || wavAscii(bytes, 8, 12) !== 'WAVE'
+    || wavU32(bytes, 4) + 8 !== bytes.length) throw new Error('INVALID_AUDIO');
+
+  let position = 12;
+  let formatSeen = false;
+  let dataLength = null;
+  while (position + 8 <= bytes.length) {
+    const kind = wavAscii(bytes, position, position + 4);
+    const size = wavU32(bytes, position + 4);
+    const dataStart = position + 8;
+    if (dataStart + size > bytes.length) throw new Error('INVALID_AUDIO');
+    if (kind === 'fmt ') {
+      if (formatSeen || size < 16 || wavU16(bytes, dataStart) !== 1
+        || wavU16(bytes, dataStart + 2) !== 1 || wavU32(bytes, dataStart + 4) !== 16000
+        || wavU32(bytes, dataStart + 8) !== 32000 || wavU16(bytes, dataStart + 12) !== 2
+        || wavU16(bytes, dataStart + 14) !== 16) throw new Error('INVALID_AUDIO');
+      formatSeen = true;
+    }
+    if (kind === 'data') {
+      if (dataLength !== null) throw new Error('INVALID_AUDIO');
+      dataLength = size;
+    }
+    position = dataStart + size + (size % 2);
+  }
+  if (!formatSeen || dataLength === null || dataLength % 2 !== 0 || position !== bytes.length) {
+    throw new Error('INVALID_AUDIO');
+  }
+  const durationSeconds = dataLength / 32000;
+  if (durationSeconds < 0.2 || durationSeconds > 60
+    || Math.abs(durationSeconds - record.durationSeconds) > 0.001) {
+    throw new Error('INVALID_AUDIO');
+  }
+  return { bytes, durationSeconds };
+}
+
+function formatTime(value) {
+  const seconds = Math.max(0, Math.round(value));
+  return String(Math.floor(seconds / 60)).padStart(2, '0') + ':'
+    + String(seconds % 60).padStart(2, '0');
+}
+
+function paintDuration() {
+  time.textContent = media ? formatTime(media.durationSeconds) : '00:00';
+}
+
+function setControlDisabled(disabled) {
+  control.disabled = disabled;
+  control.style.opacity = disabled ? '.42' : '';
+  control.style.cursor = disabled ? 'not-allowed' : '';
+}
+
+function disposePlayback() {
+  const active = playback;
+  playback = null;
+  playbackToken += 1;
+  if (!active) return;
+  if (active.source) {
+    active.source.onended = null;
+    try { active.source.stop(); } catch {}
+    try { active.source.disconnect(); } catch {}
+  }
+  if (active.context) {
+    try {
+      const closing = active.context.close();
+      if (closing?.catch) closing.catch(() => {});
+    } catch {}
+  }
+}
+
+function setUnavailable(message, clearSubtitle = false) {
+  disposePlayback();
+  media = null;
+  player.previewState('idle');
+  setControlDisabled(true);
+  paintDuration();
+  if (clearSubtitle) subtitle.textContent = '';
+  status.textContent = message;
+}
+
+async function startPlayback() {
+  if (!media || control.disabled) return;
+  const selected = media;
+  const token = ++playbackToken;
+  let context = null;
+  try {
+    setControlDisabled(true);
+    status.textContent = '正在验证音频播放…';
+    const Context = window.AudioContext || window.webkitAudioContext;
+    if (typeof Context !== 'function') throw new Error('AUDIO_CONTEXT_UNAVAILABLE');
+    context = new Context();
+    playback = { token, context, source: null, state: 'starting' };
+    await context.resume();
+    if (context.state !== 'running' || token !== playbackToken || media !== selected) {
+      throw new Error('STALE_AUDIO');
+    }
+    const copy = new Uint8Array(selected.bytes.length);
+    copy.set(selected.bytes);
+    const decoded = await context.decodeAudioData(copy.buffer);
+    if (token !== playbackToken || media !== selected || !decoded
+      || !Number.isFinite(decoded.duration) || decoded.duration < 0.2 || decoded.duration > 60
+      || Math.abs(decoded.duration - selected.durationSeconds) > 0.1) {
+      throw new Error('AUDIO_DECODE_FAILED');
+    }
+    const source = context.createBufferSource();
+    source.buffer = decoded;
+    source.connect(context.destination);
+    const active = { token, context, source, state: 'playing' };
+    playback = active;
+    source.onended = () => {
+      if (playback !== active) return;
+      playback = null;
+      playbackToken += 1;
+      try { source.disconnect(); } catch {}
+      try {
+        const closing = context.close();
+        if (closing?.catch) closing.catch(() => {});
+      } catch {}
+      player.previewState('ended');
+      setControlDisabled(false);
+      paintDuration();
+      status.textContent = '';
+    };
+    source.start();
+    player.previewState('playing');
+    setControlDisabled(false);
+    paintDuration();
+    status.textContent = '';
+  } catch {
+    if (token !== playbackToken) return;
+    if (playback) disposePlayback();
+    else if (context) {
+      try { await context.close(); } catch {}
+    }
+    setUnavailable('音频播放失败，未播放；不会自动重新生成。');
+  }
+}
+
+async function togglePlayback() {
+  if (!media || control.disabled) return;
+  if (playback?.state === 'playing') {
+    try {
+      await playback.context.suspend();
+      playback.state = 'paused';
+      player.previewState('paused');
+      setControlDisabled(false);
+      paintDuration();
+      return;
+    } catch {
+      setUnavailable('音频暂停失败，已停止播放。');
+      return;
+    }
+  }
+  if (playback?.state === 'paused') {
+    try {
+      await playback.context.resume();
+      if (playback.context.state !== 'running') throw new Error('AUDIO_CONTEXT_NOT_RUNNING');
+      playback.state = 'playing';
+      player.previewState('playing');
+      setControlDisabled(false);
+      paintDuration();
+      return;
+    } catch {
+      setUnavailable('音频继续播放失败，已停止播放。');
+      return;
+    }
+  }
+  await startPlayback();
 }
 
 function applyToolResult(result) {
   if (result?.structuredContent?.status !== 'audio_ready') return;
   const record = result?._meta?.auralisPrivateAudio?.record;
   try {
-    player.setAudioBlob(decodeAudio(record));
+    disposePlayback();
+    media = decodeAudio(record);
+    player.previewState('idle');
+    setControlDisabled(false);
+    paintDuration();
     subtitle.textContent = typeof record.text === 'string' ? record.text : '';
     status.textContent = '';
   } catch {
-    player.previewState('idle');
-    subtitle.textContent = '';
-    status.textContent = '音频没有安全送达，请不要重复生成。';
+    setUnavailable('音频没有安全送达，请不要重复生成。', true);
   }
 }
+
+control.addEventListener('click', (event) => {
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  void togglePlayback();
+}, true);
 
 window.addEventListener('message', (event) => {
   if (event.source !== window.parent) return;
@@ -104,13 +310,13 @@ window.addEventListener('message', (event) => {
 }, { passive: true });
 
 player.previewState('loading');
+setControlDisabled(true);
 request('ui/initialize', {
-  appInfo: { name: 'auralis-voice-player', version: '1.0.1' },
+  appInfo: { name: 'auralis-voice-player', version: '1.0.2' },
   appCapabilities: {},
   protocolVersion: '2026-01-26'
 }).then(() => notify('ui/notifications/initialized', {})).catch(() => {
-  player.previewState('idle');
-  status.textContent = '播放器连接失败，没有重新生成语音。';
+  setUnavailable('播放器连接失败，没有重新生成语音。');
 });
 `;
 
@@ -121,13 +327,18 @@ request('ui/initialize', {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     * { box-sizing: border-box; }
-    html, body { margin: 0; min-height: 104px; background: transparent; }
+    html, body { margin: 0; min-height: 0; background: transparent; }
     body {
-      padding: 4px 0 8px;
+      padding: 2px 0 4px;
       font-family: Inter, "Microsoft YaHei", system-ui, sans-serif;
     }
-    main { width: min(296px, 100%); display: grid; gap: 5px; justify-items: start; margin: 0; }
-    cat-ear-player { width: 100%; }
+    main { width: min(276px, 100%); display: grid; gap: 4px; justify-items: start; margin: 0; }
+    #auralis-player-frame { width: 276px; height: 69px; max-width: 100%; overflow: visible; }
+    cat-ear-player {
+      width: 344px;
+      transform: scale(.80232558);
+      transform-origin: top left;
+    }
     #auralis-subtitle,
     #auralis-status { width: 100%; margin: 0; text-align: left; }
     #auralis-subtitle { color: #5f596d; font-size: 14px; line-height: 1.55; }
@@ -138,7 +349,9 @@ request('ui/initialize', {
 </head>
 <body>
   <main>
-    <cat-ear-player id="auralis-player" color="#D8CEF2"></cat-ear-player>
+    <div id="auralis-player-frame">
+      <cat-ear-player id="auralis-player" color="#D8CEF2"></cat-ear-player>
+    </div>
     <p id="auralis-subtitle"></p>
     <p id="auralis-status">正在准备语音…</p>
   </main>
@@ -183,7 +396,7 @@ function createAuralisMcpRuntime({ adapter, gate, oauth } = {}) {
       RESOURCE_MIME_TYPE,
       z
     } = await loadModules();
-    const server = new McpServer({ name: 'auralis-voice', version: '1.0.1' });
+    const server = new McpServer({ name: 'auralis-voice', version: '1.0.2' });
     const oauthSecurity = [{ type: 'oauth2', scopes: ['voice:speak'] }];
 
     function widgetResource(uri) {
@@ -216,6 +429,13 @@ function createAuralisMcpRuntime({ adapter, gate, oauth } = {}) {
       {},
       widgetResource(LEGACY_RESOURCE_URI)
     );
+    registerAppResource(
+      server,
+      'auralis-cat-ear-player-previous',
+      PREVIOUS_RESOURCE_URI,
+      {},
+      widgetResource(PREVIOUS_RESOURCE_URI)
+    );
 
     registerAppTool(
       server,
@@ -241,8 +461,16 @@ function createAuralisMcpRuntime({ adapter, gate, oauth } = {}) {
         }
         try {
           const result = await gate.run(() => adapter.synthesize(normalizedText));
-          if (!result || !Buffer.isBuffer(result.audio) || result.audio.length < 64
-            || result.audio.length > MAX_AUDIO_BYTES || result.mimeType !== 'audio/mpeg') {
+          let metadata;
+          try {
+            metadata = validatePcmWav(result?.audio);
+          } catch {
+            metadata = null;
+          }
+          if (!result || !Buffer.isBuffer(result.audio) || result.audio.length < 44
+            || result.audio.length > MAX_AUDIO_BYTES || result.mimeType !== 'audio/wav'
+            || !metadata || !Number.isFinite(result.durationSeconds)
+            || Math.abs(result.durationSeconds - metadata.durationSeconds) > 0.001) {
             throw Object.assign(new Error('invalid_audio'), { code: 'PROVIDER_INVALID_AUDIO' });
           }
           return {
@@ -253,7 +481,10 @@ function createAuralisMcpRuntime({ adapter, gate, oauth } = {}) {
                 version: 1,
                 record: {
                   text: normalizedText,
-                  audioMimeType: 'audio/mpeg',
+                  source: 'minimax',
+                  generated: true,
+                  audioMimeType: 'audio/wav',
+                  durationSeconds: metadata.durationSeconds,
                   audioBase64: result.audio.toString('base64')
                 }
               }
@@ -336,6 +567,7 @@ module.exports = {
   LEGACY_RESOURCE_URI,
   MAX_AUDIO_BYTES,
   MCP_PATH,
+  PREVIOUS_RESOURCE_URI,
   RESOURCE_URI,
   buildWidgetHtml,
   controlledToolError,

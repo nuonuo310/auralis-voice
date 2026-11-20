@@ -7,6 +7,7 @@ const { once } = require('node:events');
 const { loadConfig, ConfigError } = require('../src/config');
 const { CALLBACK_URL, OAUTH_SCOPE } = require('../src/oauth');
 const { createVoiceServer } = require('../src/server');
+const { makePcmWav } = require('../test-support/wav');
 
 const ORIGIN = 'https://auralis.example.com';
 const CLIENT_ID = 'auralis-chatgpt-desktop';
@@ -26,7 +27,7 @@ async function startServer() {
   const adapter = {
     async synthesize() {
       calls.provider += 1;
-      return { audio: Buffer.from('ID3-test-audio-payload'.repeat(8)), mimeType: 'audio/mpeg' };
+      return { audio: makePcmWav(), mimeType: 'audio/wav', durationSeconds: 0.25 };
     }
   };
   const server = createVoiceServer({
@@ -234,14 +235,14 @@ test('authorized MCP initializes, lists the single voice tool, and does not synt
     assert.equal(listed.status, 200);
     const listResult = await listed.json();
     assert.deepEqual(listResult.result.tools.map((tool) => tool.name), ['speak_with_auralis']);
-    assert.equal(listResult.result.tools[0]._meta.ui.resourceUri, 'ui://auralis-voice/cat-ear-player-v5-chat-v2.html');
+    assert.equal(listResult.result.tools[0]._meta.ui.resourceUri, 'ui://auralis-voice/cat-ear-player-v5-chat-v3.html');
     assert.equal(calls.provider, 0);
   } finally {
     await stopServer(server);
   }
 });
 
-test('authorized MCP generates exactly once and delivers MP3 only to the locked cat-ear widget metadata', async () => {
+test('authorized MCP generates exactly once and delivers validated WAV only to the locked cat-ear widget metadata', async () => {
   const { server, baseUrl, calls } = await startServer();
   try {
     const tokens = await authorize(baseUrl);
@@ -265,7 +266,10 @@ test('authorized MCP generates exactly once and delivers MP3 only to the locked 
     const callResult = (await called.json()).result;
     assert.equal(callResult.structuredContent.status, 'audio_ready');
     assert.equal(callResult.structuredContent.record, undefined);
-    assert.equal(callResult._meta.auralisPrivateAudio.record.audioMimeType, 'audio/mpeg');
+    assert.equal(callResult._meta.auralisPrivateAudio.record.audioMimeType, 'audio/wav');
+    assert.equal(callResult._meta.auralisPrivateAudio.record.source, 'minimax');
+    assert.equal(callResult._meta.auralisPrivateAudio.record.generated, true);
+    assert.equal(callResult._meta.auralisPrivateAudio.record.durationSeconds, 0.25);
     assert.ok(callResult._meta.auralisPrivateAudio.record.audioBase64.length > 100);
     assert.equal(calls.provider, 1);
 
@@ -276,7 +280,7 @@ test('authorized MCP generates exactly once and delivers MP3 only to the locked 
         jsonrpc: '2.0',
         id: 4,
         method: 'resources/read',
-        params: { uri: 'ui://auralis-voice/cat-ear-player-v5-chat-v2.html' }
+        params: { uri: 'ui://auralis-voice/cat-ear-player-v5-chat-v3.html' }
       })
     });
     assert.equal(resource.status, 200);
@@ -284,13 +288,19 @@ test('authorized MCP generates exactly once and delivers MP3 only to the locked 
     assert.match(html, /<cat-ear-player id="auralis-player"/);
     assert.match(html, /M26 10 H318 C322 6 326 1 330 0/);
     assert.match(html, /ui\/notifications\/tool-result/);
-    assert.match(html, /width: min\(296px, 100%\)/);
+    assert.match(html, /width: min\(276px, 100%\)/);
+    assert.match(html, /height: 69px/);
+    assert.match(html, /transform: scale\(\.80232558\)/);
     assert.match(html, /justify-items: start/);
-    assert.match(html, /padding: 4px 0 8px/);
+    assert.match(html, /padding: 2px 0 4px/);
     assert.doesNotMatch(html, /body \{[^}]*place-items: center/s);
     assert.match(html, /<p id="auralis-subtitle"><\/p>/);
     assert.match(html, /subtitle\.textContent = typeof record\.text === 'string'/);
     assert.match(html, /#auralis-subtitle:empty/);
+    assert.match(html, /context\.decodeAudioData\(copy\.buffer\)/);
+    assert.match(html, /source\.start\(\)/);
+    assert.match(html, /setControlDisabled\(true\)/);
+    assert.match(html, /音频播放失败，未播放/);
     assert.ok(!html.includes(CLIENT_SECRET));
 
     const legacyResource = await fetch(`${baseUrl}/mcp`, {
@@ -306,6 +316,19 @@ test('authorized MCP generates exactly once and delivers MP3 only to the locked 
     assert.equal(legacyResource.status, 200);
     const legacyHtml = (await legacyResource.json()).result.contents[0].text;
     assert.equal(legacyHtml, html);
+
+    const previousResource = await fetch(`${baseUrl}/mcp`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 6,
+        method: 'resources/read',
+        params: { uri: 'ui://auralis-voice/cat-ear-player-v5-chat-v2.html' }
+      })
+    });
+    assert.equal(previousResource.status, 200);
+    assert.equal((await previousResource.json()).result.contents[0].text, html);
     assert.equal(calls.provider, 1);
   } finally {
     await stopServer(server);

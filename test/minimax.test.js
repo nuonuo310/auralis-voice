@@ -8,6 +8,7 @@ const {
   isStrictHex
 } = require('../src/adapters/minimax');
 const { createBreezeAdapter } = require('../src/adapters/breeze');
+const { makePcmWav } = require('../test-support/wav');
 
 const BASE_OPTIONS = {
   apiKey: 'test-api-key',
@@ -23,7 +24,7 @@ function jsonResponse(payload, status = 200) {
   });
 }
 
-function successResponse(audio = '48656c6c6f') {
+function successResponse(audio = makePcmWav().toString('hex')) {
   return jsonResponse({
     base_resp: { status_code: 0 },
     data: { audio }
@@ -43,7 +44,7 @@ test('uses the fixed China endpoint, encodes GroupId, and sends fixed TTS parame
   const fetchImpl = async (url, init) => {
     callCount += 1;
     captured = { url, init };
-    return successResponse('48656c6c6f');
+    return successResponse();
   };
   const adapter = createMiniMaxAdapter({ ...BASE_OPTIONS, fetchImpl });
 
@@ -69,15 +70,15 @@ test('uses the fixed China endpoint, encodes GroupId, and sends fixed TTS parame
       pitch: 0
     },
     audio_setting: {
-      format: 'mp3',
-      sample_rate: 32000,
-      bitrate: 128000,
+      format: 'wav',
+      sample_rate: 16000,
       channel: 1
     },
     language_boost: 'auto'
   });
-  assert.deepEqual(result.audio, Buffer.from('Hello'));
-  assert.equal(result.mimeType, 'audio/mpeg');
+  assert.deepEqual(result.audio, makePcmWav());
+  assert.equal(result.mimeType, 'audio/wav');
+  assert.equal(result.durationSeconds, 0.25);
   assert.equal(MINIMAX_TIMEOUT_MS, 120000);
 });
 
@@ -134,6 +135,14 @@ test('rejects empty, odd-length, and non-hex audio safely', async (t) => {
       await expectCode(adapter.synthesize('hello'), 'PROVIDER_INVALID_AUDIO');
     });
   }
+});
+
+test('rejects hexadecimal data that is not the exact PCM WAV contract', async () => {
+  const adapter = createMiniMaxAdapter({
+    ...BASE_OPTIONS,
+    fetchImpl: async () => successResponse(Buffer.from('plain bytes').toString('hex'))
+  });
+  await expectCode(adapter.synthesize('hello'), 'PROVIDER_INVALID_AUDIO');
 });
 
 test('maps HTTP errors without retrying', async () => {

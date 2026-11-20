@@ -1,6 +1,7 @@
 'use strict';
 
 const { MINIMAX_TTS_URL } = require('../config');
+const { canonicalizeNonseekableWav, validatePcmWav } = require('../wav');
 
 const MINIMAX_TIMEOUT_MS = 120000;
 
@@ -54,9 +55,8 @@ function createMiniMaxAdapter({
         pitch: 0
       },
       audio_setting: {
-        format: 'mp3',
-        sample_rate: 32000,
-        bitrate: 128000,
+        format: 'wav',
+        sample_rate: 16000,
         channel: 1
       },
       language_boost: 'auto'
@@ -132,14 +132,19 @@ function createMiniMaxAdapter({
         throw new AdapterError('PROVIDER_INVALID_AUDIO', 'Voice provider returned invalid audio.');
       }
 
-      const audio = Buffer.from(audioHex, 'hex');
-      if (audio.length === 0) {
+      let audio = Buffer.from(audioHex, 'hex');
+      audio = canonicalizeNonseekableWav(audio);
+      let metadata;
+      try {
+        metadata = validatePcmWav(audio);
+      } catch {
         throw new AdapterError('PROVIDER_INVALID_AUDIO', 'Voice provider returned invalid audio.');
       }
 
       return {
         audio,
-        mimeType: 'audio/mpeg'
+        mimeType: metadata.mimeType,
+        durationSeconds: metadata.durationSeconds
       };
     } finally {
       clearTimeout(timeout);

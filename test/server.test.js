@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { createConfiguredServer, resolveListenHost } = require('../src/server');
 const { loadConfig, REQUIRED_KEYS } = require('../src/config');
+const { makePcmWav } = require('../test-support/wav');
 
 const VALID_ENV = {
   MINIMAX_API_KEY: 'test-api-key',
@@ -14,7 +15,7 @@ const VALID_ENV = {
   MINIMAX_MODEL: 'test-model'
 };
 
-function successResponse(audio = '494433') {
+function successResponse(audio = makePcmWav().toString('hex')) {
   return new Response(JSON.stringify({
     base_resp: { status_code: 0 },
     data: { audio }
@@ -60,23 +61,23 @@ async function assertErrorResponse(response, status, code) {
   return payload;
 }
 
-test('POST /api/tts returns MP3 audio and calls the provider exactly once', async () => {
+test('POST /api/tts returns validated WAV audio and calls the provider exactly once', async () => {
   let callCount = 0;
   let providerPayload;
   const { server, baseUrl } = await startServer(async (url, init) => {
     callCount += 1;
     providerPayload = JSON.parse(init.body);
-    return successResponse('494433');
+    return successResponse();
   });
 
   try {
     const response = await postTts(baseUrl, { text: ' 你好 ' });
 
     assert.equal(response.status, 200);
-    assert.equal(response.headers.get('content-type'), 'audio/mpeg');
+    assert.equal(response.headers.get('content-type'), 'audio/wav');
     assert.equal(response.headers.get('cache-control'), 'no-store');
     assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
-    assert.deepEqual(Buffer.from(await response.arrayBuffer()), Buffer.from('ID3'));
+    assert.deepEqual(Buffer.from(await response.arrayBuffer()), makePcmWav());
     assert.equal(callCount, 1);
     assert.equal(providerPayload.text, '你好');
   } finally {

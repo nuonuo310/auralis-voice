@@ -1,6 +1,6 @@
 # 播放器接入契约
 
-Auralis Voice 的服务端负责验证请求、执行安全门禁、调用 MiniMax，并返回 MP3。猫耳播放器只管理客户端音频和五态，不保存服务端状态。
+Auralis Voice 的服务端负责验证请求、执行安全门禁、调用 MiniMax，并返回经校验的 16 kHz 单声道 PCM WAV。猫耳播放器只管理客户端音频和五态，不保存服务端状态。
 
 ## POST /api/tts
 
@@ -32,10 +32,10 @@ loopback 本地开发未配置 `PUBLIC_V1_ACCESS_TOKEN` 时可省略 Authorizati
 成功响应：
 
 - HTTP `200`
-- `Content-Type: audio/mpeg`
+- `Content-Type: audio/wav`
 - `Cache-Control: no-store`
 - `X-Content-Type-Options: nosniff`
-- 响应体为 MP3 二进制，不是 JSON 包装
+- 响应体为 WAV 二进制，不是 JSON 包装
 
 失败响应统一为：
 
@@ -124,7 +124,7 @@ loopback 本地开发未配置 `PUBLIC_V1_ACCESS_TOKEN` 时可省略 Authorizati
 
 - loopback、未启用令牌时，可以直接调用 `player.synthesize(text)`。
 - 受保护部署不得为此修改锁定播放器。
-- 宿主自行带 Bearer 请求 `/api/tts`，取得 MP3 Blob 后调用 `player.setAudioBlob(blob)`。
+- 宿主自行带 Bearer 请求 `/api/tts`，取得 WAV Blob 后调用 `player.setAudioBlob(blob)`。
 - `accessToken` 应由宿主在当前受控会话中临时取得，不得硬编码进仓库或公开静态文件。
 
 最小宿主示例：

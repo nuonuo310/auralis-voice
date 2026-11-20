@@ -215,12 +215,13 @@ async function handleTts(req, res, adapter, gate) {
   }
 
   const result = await gate.run(() => adapter.synthesize(text));
-  if (!result || !Buffer.isBuffer(result.audio) || result.audio.length === 0 || result.mimeType !== 'audio/mpeg') {
+  if (!result || !Buffer.isBuffer(result.audio) || result.audio.length === 0
+    || !['audio/mpeg', 'audio/wav'].includes(result.mimeType)) {
     throw new HttpError('INTERNAL_ERROR');
   }
 
   res.writeHead(200, {
-    'Content-Type': 'audio/mpeg',
+    'Content-Type': result.mimeType,
     'Content-Length': result.audio.length,
     'Cache-Control': 'no-store',
     'X-Content-Type-Options': 'nosniff'
