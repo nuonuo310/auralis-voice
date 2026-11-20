@@ -284,6 +284,13 @@ test('authorized MCP generates exactly once and delivers MP3 only to the locked 
     assert.match(html, /<cat-ear-player id="auralis-player"/);
     assert.match(html, /M26 10 H318 C322 6 326 1 330 0/);
     assert.match(html, /ui\/notifications\/tool-result/);
+    assert.match(html, /width: min\(296px, 100%\)/);
+    assert.match(html, /justify-items: start/);
+    assert.match(html, /padding: 4px 0 8px/);
+    assert.doesNotMatch(html, /body \{[^}]*place-items: center/s);
+    assert.match(html, /<p id="auralis-subtitle"><\/p>/);
+    assert.match(html, /subtitle\.textContent = typeof record\.text === 'string'/);
+    assert.match(html, /#auralis-subtitle:empty/);
     assert.ok(!html.includes(CLIENT_SECRET));
     assert.equal(calls.provider, 1);
   } finally {

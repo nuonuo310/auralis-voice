@@ -37,6 +37,7 @@ function buildWidgetHtml(playerSource) {
   const bridge = String.raw`
 const player = document.querySelector('#auralis-player');
 const status = document.querySelector('#auralis-status');
+const subtitle = document.querySelector('#auralis-subtitle');
 let rpcId = 0;
 const pending = new Map();
 
@@ -76,9 +77,11 @@ function applyToolResult(result) {
   const record = result?._meta?.auralisPrivateAudio?.record;
   try {
     player.setAudioBlob(decodeAudio(record));
-    status.textContent = '语音准备好了，点播放键听。';
+    subtitle.textContent = typeof record.text === 'string' ? record.text : '';
+    status.textContent = '';
   } catch {
     player.previewState('idle');
+    subtitle.textContent = '';
     status.textContent = '音频没有安全送达，请不要重复生成。';
   }
 }
@@ -117,21 +120,26 @@ request('ui/initialize', {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     * { box-sizing: border-box; }
-    html, body { margin: 0; min-height: 126px; background: transparent; }
+    html, body { margin: 0; min-height: 104px; background: transparent; }
     body {
-      padding: 18px 10px 16px;
-      display: grid;
-      place-items: center;
+      padding: 4px 0 8px;
       font-family: Inter, "Microsoft YaHei", system-ui, sans-serif;
     }
-    main { width: min(344px, 100%); display: grid; gap: 7px; justify-items: center; }
-    #auralis-status { margin: 0; color: #8e87a2; font-size: 12px; letter-spacing: .04em; }
+    main { width: min(296px, 100%); display: grid; gap: 5px; justify-items: start; margin: 0; }
+    cat-ear-player { width: 100%; }
+    #auralis-subtitle,
+    #auralis-status { width: 100%; margin: 0; text-align: left; }
+    #auralis-subtitle { color: #5f596d; font-size: 14px; line-height: 1.55; }
+    #auralis-status { color: #8e87a2; font-size: 11px; letter-spacing: .02em; }
+    #auralis-subtitle:empty,
+    #auralis-status:empty { display: none; }
   </style>
 </head>
 <body>
   <main>
-    <p id="auralis-status">正在准备语音…</p>
     <cat-ear-player id="auralis-player" color="#D8CEF2"></cat-ear-player>
+    <p id="auralis-subtitle"></p>
+    <p id="auralis-status">正在准备语音…</p>
   </main>
   <script type="module">
 ${playerSource}
