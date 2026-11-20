@@ -292,6 +292,20 @@ test('authorized MCP generates exactly once and delivers MP3 only to the locked 
     assert.match(html, /subtitle\.textContent = typeof record\.text === 'string'/);
     assert.match(html, /#auralis-subtitle:empty/);
     assert.ok(!html.includes(CLIENT_SECRET));
+
+    const legacyResource = await fetch(`${baseUrl}/mcp`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 5,
+        method: 'resources/read',
+        params: { uri: 'ui://auralis-voice/cat-ear-player-v5.html' }
+      })
+    });
+    assert.equal(legacyResource.status, 200);
+    const legacyHtml = (await legacyResource.json()).result.contents[0].text;
+    assert.equal(legacyHtml, html);
     assert.equal(calls.provider, 1);
   } finally {
     await stopServer(server);

@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const MCP_PATH = '/mcp';
+const LEGACY_RESOURCE_URI = 'ui://auralis-voice/cat-ear-player-v5.html';
 const RESOURCE_URI = 'ui://auralis-voice/cat-ear-player-v5-chat-v2.html';
 const MAX_AUDIO_BYTES = 8 * 1024 * 1024;
 const PLAYER_SOURCE_PATH = path.join(__dirname, '..', 'public', 'player', 'cat-ear-player.js');
@@ -185,14 +186,10 @@ function createAuralisMcpRuntime({ adapter, gate, oauth } = {}) {
     const server = new McpServer({ name: 'auralis-voice', version: '1.0.1' });
     const oauthSecurity = [{ type: 'oauth2', scopes: ['voice:speak'] }];
 
-    registerAppResource(
-      server,
-      'auralis-cat-ear-player',
-      RESOURCE_URI,
-      {},
-      async () => ({
+    function widgetResource(uri) {
+      return async () => ({
         contents: [{
-          uri: RESOURCE_URI,
+          uri,
           mimeType: RESOURCE_MIME_TYPE,
           text: widgetHtml,
           _meta: {
@@ -202,7 +199,22 @@ function createAuralisMcpRuntime({ adapter, gate, oauth } = {}) {
             }
           }
         }]
-      })
+      });
+    }
+
+    registerAppResource(
+      server,
+      'auralis-cat-ear-player',
+      RESOURCE_URI,
+      {},
+      widgetResource(RESOURCE_URI)
+    );
+    registerAppResource(
+      server,
+      'auralis-cat-ear-player-legacy',
+      LEGACY_RESOURCE_URI,
+      {},
+      widgetResource(LEGACY_RESOURCE_URI)
     );
 
     registerAppTool(
@@ -321,6 +333,7 @@ function createAuralisMcpRuntime({ adapter, gate, oauth } = {}) {
 }
 
 module.exports = {
+  LEGACY_RESOURCE_URI,
   MAX_AUDIO_BYTES,
   MCP_PATH,
   RESOURCE_URI,
