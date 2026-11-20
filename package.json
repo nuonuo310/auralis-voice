@@ -1,0 +1,14 @@
+{
+  "name": "public-voice-v1",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Minimal MiniMax TTS service and player integration contract for public Voice V1.",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  }
+}

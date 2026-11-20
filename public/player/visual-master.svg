@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="600" viewBox="0 0 520 600">
+  <defs>
+    <radialGradient id="pageGlowA" cx="0" cy="0" r="1" gradientTransform="translate(90 90) rotate(48) scale(250)">
+      <stop stop-color="#D8CEF2" stop-opacity=".58"/>
+      <stop offset="1" stop-color="#D8CEF2" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="pageGlowB" cx="0" cy="0" r="1" gradientTransform="translate(440 520) rotate(-135) scale(210)">
+      <stop stop-color="#EFDAE8" stop-opacity=".58"/>
+      <stop offset="1" stop-color="#EFDAE8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="panel" x1="100" y1="60" x2="420" y2="545" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#F7F5FB" stop-opacity=".72"/>
+    </linearGradient>
+    <linearGradient id="bubble" x1="170" y1="226" x2="325" y2="342" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E9E3FA"/>
+      <stop offset="1" stop-color="#D2C5EE"/>
+    </linearGradient>
+    <linearGradient id="button" x1="133" y1="258" x2="179" y2="304" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity=".72"/>
+      <stop offset="1" stop-color="#F5F1FE" stop-opacity=".43"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#74618F"/>
+      <stop offset="1" stop-color="#A894CA"/>
+    </linearGradient>
+    <pattern id="grain" width="5" height="5" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r=".6" fill="#675281" opacity=".12"/>
+    </pattern>
+  </defs>
+
+  <rect width="520" height="600" fill="#FAF9FD"/>
+  <rect width="520" height="600" fill="url(#pageGlowA)"/>
+  <rect width="520" height="600" fill="url(#pageGlowB)"/>
+  <rect x="49" y="57" width="422" height="502" rx="32" fill="#6D5B91" opacity=".06"/>
+  <rect x="40" y="40" width="440" height="520" rx="34" fill="url(#panel)" stroke="#CAC2DD" stroke-opacity=".46"/>
+
+  <text x="260" y="195" text-anchor="middle" fill="#8E87A2" font-family="Inter, Microsoft YaHei, sans-serif" font-size="12" letter-spacing="2">播放中</text>
+
+  <rect x="96" y="239" width="328" height="72" rx="23" fill="#715899" opacity=".12"/>
+  <g>
+    <path d="M114 226 H406 C410 222 414 217 418 216 C423 220 427 226 430 237 C431 241 432 246 432 251 V277 C432 291 421 302 407 302 H113 C99 302 88 291 88 277 V251 C88 246 89 241 90 237 C93 226 97 220 102 216 C106 217 110 222 114 226 Z" fill="url(#bubble)" stroke="#FFFFFF" stroke-opacity=".86"/>
+    <path d="M114 226 H406 C410 222 414 217 418 216 C423 220 427 226 430 237 C431 241 432 246 432 251 V277 C432 291 421 302 407 302 H113 C99 302 88 291 88 277 V251 C88 246 89 241 90 237 C93 226 97 220 102 216 C106 217 110 222 114 226 Z" fill="url(#grain)" opacity=".26"/>
+    <path d="M116 230 H404" stroke="#FFFFFF" stroke-opacity=".48" stroke-linecap="round"/>
+    <path d="M95 235 C97 228 99 222 102 220 C105 221 109 225 112 229 C104 229 99 231 95 235 Z" fill="#EFBED2" fill-opacity=".82"/>
+    <path d="M408 229 C411 225 415 221 418 220 C421 222 423 228 425 235 C421 231 416 229 408 229 Z" fill="#EFBED2" fill-opacity=".82"/>
+  </g>
+
+  <rect x="103" y="241" width="46" height="46" rx="17" fill="url(#button)" stroke="#FFFFFF" stroke-opacity=".72"/>
+  <rect x="119" y="252" width="5" height="23" rx="2.5" fill="#65577F"/>
+  <rect x="129" y="252" width="5" height="23" rx="2.5" fill="#65577F"/>
+
+  <g fill="url(#bar)">
+    <rect x="166" y="260" width="3" height="8" rx="1.5"/>
+    <rect x="177" y="256" width="3" height="16" rx="1.5"/>
+    <rect x="188" y="252" width="3" height="24" rx="1.5"/>
+    <rect x="199" y="257.5" width="3" height="13" rx="1.5"/>
+    <rect x="210" y="249.5" width="3" height="29" rx="1.5"/>
+    <rect x="221" y="254" width="3" height="20" rx="1.5"/>
+    <rect x="232" y="259" width="3" height="10" rx="1.5"/>
+    <rect x="243" y="251.5" width="3" height="25" rx="1.5"/>
+    <rect x="254" y="248" width="3" height="32" rx="1.5"/>
+    <rect x="265" y="255.5" width="3" height="17" rx="1.5"/>
+    <rect x="276" y="250.5" width="3" height="27" rx="1.5"/>
+    <rect x="287" y="258" width="3" height="12" rx="1.5"/>
+    <rect x="298" y="253.5" width="3" height="21" rx="1.5"/>
+    <rect x="309" y="249" width="3" height="30" rx="1.5"/>
+    <rect x="320" y="256.5" width="3" height="15" rx="1.5"/>
+    <rect x="331" y="252.5" width="3" height="23" rx="1.5"/>
+    <rect x="342" y="259.5" width="3" height="9" rx="1.5"/>
+    <rect x="353" y="255" width="3" height="18" rx="1.5"/>
+  </g>
+  <text x="391" y="268" text-anchor="middle" dominant-baseline="middle" fill="#756B88" font-family="Inter, Microsoft YaHei, sans-serif" font-size="12" letter-spacing=".5">00:12</text>
+
+  <g font-family="Inter, Microsoft YaHei, sans-serif" font-size="12" text-anchor="middle">
+    <rect x="83" y="404" width="64" height="34" rx="17" fill="#FFFFFF" fill-opacity=".7" stroke="#B9AED2" stroke-opacity=".55"/>
+    <text x="115" y="426" fill="#756B88">静止</text>
+    <rect x="155" y="404" width="76" height="34" rx="17" fill="#FFFFFF" fill-opacity=".7" stroke="#B9AED2" stroke-opacity=".55"/>
+    <text x="193" y="426" fill="#756B88">生成中</text>
+    <rect x="239" y="404" width="64" height="34" rx="17" fill="#E4DBF7" stroke="#BAA8DF"/>
+    <text x="271" y="426" fill="#55476D">播放</text>
+    <rect x="311" y="404" width="64" height="34" rx="17" fill="#FFFFFF" fill-opacity=".7" stroke="#B9AED2" stroke-opacity=".55"/>
+    <text x="343" y="426" fill="#756B88">暂停</text>
+    <rect x="383" y="404" width="64" height="34" rx="17" fill="#FFFFFF" fill-opacity=".7" stroke="#B9AED2" stroke-opacity=".55"/>
+    <text x="415" y="426" fill="#756B88">播完</text>
+  </g>
+</svg>

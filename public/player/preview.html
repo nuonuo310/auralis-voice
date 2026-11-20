@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>猫耳语音播放器母版</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      color: #514b64;
+      background:
+        radial-gradient(circle at 17% 14%, rgba(216, 206, 242, .55), transparent 27%),
+        radial-gradient(circle at 87% 84%, rgba(239, 218, 232, .5), transparent 28%),
+        #faf9fd;
+      font-family: Inter, "Microsoft YaHei", system-ui, sans-serif;
+    }
+    main {
+      width: min(440px, calc(100vw - 28px));
+      min-height: 390px;
+      padding: 58px 30px 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 48px;
+      border: 1px solid rgba(202, 194, 221, .45);
+      border-radius: 34px;
+      background: rgba(255, 255, 255, .72);
+      box-shadow: 0 22px 70px rgba(92, 79, 121, .12);
+    }
+    #status {
+      margin: 0 0 -30px;
+      color: #8e87a2;
+      font-size: 12px;
+      letter-spacing: .12em;
+    }
+    nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+    nav button {
+      padding: 8px 12px;
+      border: 1px solid rgba(185, 174, 210, .56);
+      border-radius: 999px;
+      color: #756b88;
+      background: rgba(255, 255, 255, .72);
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    nav button[aria-pressed="true"] {
+      color: #55476d;
+      border-color: #baa8df;
+      background: #e4dbf7;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <p id="status">播放中</p>
+    <cat-ear-player id="player" color="#D8CEF2"></cat-ear-player>
+    <nav aria-label="预览状态">
+      <button data-state="idle">静止</button>
+      <button data-state="loading">生成中</button>
+      <button data-state="playing" aria-pressed="true">播放</button>
+      <button data-state="paused">暂停</button>
+      <button data-state="ended">播完</button>
+    </nav>
+  </main>
+  <script type="module">
+    import './cat-ear-player.js';
+
+    const player = document.querySelector('#player');
+    const status = document.querySelector('#status');
+    const labels = {
+      idle: '待播放',
+      loading: '正在生成',
+      playing: '播放中',
+      paused: '已暂停',
+      ended: '播放完毕'
+    };
+
+    document.querySelectorAll('[data-state]').forEach(button => {
+      button.addEventListener('click', () => {
+        const state = button.dataset.state;
+        player.previewState(state);
+        status.textContent = labels[state];
+        document.querySelectorAll('[data-state]').forEach(item => {
+          item.setAttribute('aria-pressed', String(item === button));
+        });
+      });
+    });
+
+    player.previewState('playing');
+  </script>
+</body>
+</html>
