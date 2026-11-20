@@ -235,7 +235,7 @@ test('authorized MCP initializes, lists the single voice tool, and does not synt
     assert.equal(listed.status, 200);
     const listResult = await listed.json();
     assert.deepEqual(listResult.result.tools.map((tool) => tool.name), ['speak_with_auralis']);
-    assert.equal(listResult.result.tools[0]._meta.ui.resourceUri, 'ui://auralis-voice/cat-ear-player-v5-chat-v3.html');
+    assert.equal(listResult.result.tools[0]._meta.ui.resourceUri, 'ui://auralis-voice/cat-ear-player-v5-chat-v4.html');
     assert.equal(calls.provider, 0);
   } finally {
     await stopServer(server);
@@ -280,7 +280,7 @@ test('authorized MCP generates exactly once and delivers validated WAV only to t
         jsonrpc: '2.0',
         id: 4,
         method: 'resources/read',
-        params: { uri: 'ui://auralis-voice/cat-ear-player-v5-chat-v3.html' }
+        params: { uri: 'ui://auralis-voice/cat-ear-player-v5-chat-v4.html' }
       })
     });
     assert.equal(resource.status, 200);
@@ -301,6 +301,7 @@ test('authorized MCP generates exactly once and delivers validated WAV only to t
     assert.match(html, /source\.start\(\)/);
     assert.match(html, /setControlDisabled\(true\)/);
     assert.match(html, /音频播放失败，未播放/);
+    assert.doesNotMatch(html, /正在验证音频播放/);
     assert.ok(!html.includes(CLIENT_SECRET));
 
     const legacyResource = await fetch(`${baseUrl}/mcp`, {

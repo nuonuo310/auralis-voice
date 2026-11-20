@@ -7,7 +7,8 @@ const { validatePcmWav } = require('./wav');
 const MCP_PATH = '/mcp';
 const LEGACY_RESOURCE_URI = 'ui://auralis-voice/cat-ear-player-v5.html';
 const PREVIOUS_RESOURCE_URI = 'ui://auralis-voice/cat-ear-player-v5-chat-v2.html';
-const RESOURCE_URI = 'ui://auralis-voice/cat-ear-player-v5-chat-v3.html';
+const LAST_RESOURCE_URI = 'ui://auralis-voice/cat-ear-player-v5-chat-v3.html';
+const RESOURCE_URI = 'ui://auralis-voice/cat-ear-player-v5-chat-v4.html';
 const MAX_AUDIO_BYTES = 8 * 1024 * 1024;
 const PLAYER_SOURCE_PATH = path.join(__dirname, '..', 'public', 'player', 'cat-ear-player.js');
 
@@ -188,7 +189,6 @@ async function startPlayback() {
   let context = null;
   try {
     setControlDisabled(true);
-    status.textContent = '正在验证音频播放…';
     const Context = window.AudioContext || window.webkitAudioContext;
     if (typeof Context !== 'function') throw new Error('AUDIO_CONTEXT_UNAVAILABLE');
     context = new Context();
@@ -312,7 +312,7 @@ window.addEventListener('message', (event) => {
 player.previewState('loading');
 setControlDisabled(true);
 request('ui/initialize', {
-  appInfo: { name: 'auralis-voice-player', version: '1.0.2' },
+  appInfo: { name: 'auralis-voice-player', version: '1.0.3' },
   appCapabilities: {},
   protocolVersion: '2026-01-26'
 }).then(() => notify('ui/notifications/initialized', {})).catch(() => {
@@ -396,7 +396,7 @@ function createAuralisMcpRuntime({ adapter, gate, oauth } = {}) {
       RESOURCE_MIME_TYPE,
       z
     } = await loadModules();
-    const server = new McpServer({ name: 'auralis-voice', version: '1.0.2' });
+    const server = new McpServer({ name: 'auralis-voice', version: '1.0.3' });
     const oauthSecurity = [{ type: 'oauth2', scopes: ['voice:speak'] }];
 
     function widgetResource(uri) {
@@ -435,6 +435,13 @@ function createAuralisMcpRuntime({ adapter, gate, oauth } = {}) {
       PREVIOUS_RESOURCE_URI,
       {},
       widgetResource(PREVIOUS_RESOURCE_URI)
+    );
+    registerAppResource(
+      server,
+      'auralis-cat-ear-player-last',
+      LAST_RESOURCE_URI,
+      {},
+      widgetResource(LAST_RESOURCE_URI)
     );
 
     registerAppTool(
