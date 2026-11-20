@@ -6,6 +6,8 @@ const path = require('node:path');
 const { loadConfig, resolveListenHost } = require('./config');
 const { createMiniMaxAdapter } = require('./adapters/minimax');
 const { TtsGateError, createTtsGate } = require('./tts-gate');
+const { createOAuthRuntime } = require('./oauth');
+const { createAuralisMcpRuntime } = require('./mcp');
 
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_TEXT_LENGTH = 1000;
@@ -226,7 +228,7 @@ async function handleTts(req, res, adapter, gate) {
   res.end(result.audio);
 }
 
-function createRequestHandler({ adapter, gate = createTtsGate() }) {
+function createRequestHandler({ adapter, gate = createTtsGate(), oauth = null, mcp = null }) {
   if (!adapter || typeof adapter.synthesize !== 'function') {
     throw new TypeError('A TTS adapter is required.');
   }
@@ -242,6 +244,9 @@ function createRequestHandler({ adapter, gate = createTtsGate() }) {
       } catch (error) {
         throw new HttpError('INVALID_REQUEST');
       }
+
+      if (oauth && await oauth.handle(req, res, url)) return;
+      if (mcp && await mcp.handle(req, res, url)) return;
 
       const staticFile = STATIC_PLAYER_FILES[url.pathname];
       if (staticFile) {
@@ -287,9 +292,11 @@ function createRequestHandler({ adapter, gate = createTtsGate() }) {
   };
 }
 
-function createVoiceServer({ adapter, accessToken = null, gate = null }) {
+function createVoiceServer({ adapter, accessToken = null, gate = null, oauthConfig = null }) {
   const ttsGate = gate || createTtsGate({ accessToken });
-  return http.createServer(createRequestHandler({ adapter, gate: ttsGate }));
+  const oauth = oauthConfig ? createOAuthRuntime(oauthConfig) : null;
+  const mcp = oauth ? createAuralisMcpRuntime({ adapter, gate: ttsGate, oauth }) : null;
+  return http.createServer(createRequestHandler({ adapter, gate: ttsGate, oauth, mcp }));
 }
 
 function createConfiguredServer({ env = process.env, fetchImpl = globalThis.fetch } = {}) {
@@ -301,7 +308,7 @@ function createConfiguredServer({ env = process.env, fetchImpl = globalThis.fetc
     model: config.model,
     fetchImpl
   });
-  return createVoiceServer({ adapter, accessToken: config.accessToken });
+  return createVoiceServer({ adapter, accessToken: config.accessToken, oauthConfig: config.oauth });
 }
 
 function startFromEnv(env = process.env) {
@@ -312,7 +319,11 @@ function startFromEnv(env = process.env) {
     voiceId: config.voiceId,
     model: config.model
   });
-  const server = createVoiceServer({ adapter, accessToken: config.accessToken });
+  const server = createVoiceServer({
+    adapter,
+    accessToken: config.accessToken,
+    oauthConfig: config.oauth
+  });
   server.listen(config.port, config.host, () => {
     console.log(`Voice service listening on port ${config.port}.`);
   });

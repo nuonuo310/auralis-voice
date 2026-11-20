@@ -13,7 +13,10 @@ const REQUIRED_KEYS = Object.freeze([
 ]);
 const OPTIONAL_KEYS = Object.freeze([
   'MINIMAX_GROUP_ID',
-  'PUBLIC_V1_ACCESS_TOKEN'
+  'PUBLIC_V1_ACCESS_TOKEN',
+  'AURALIS_PUBLIC_ORIGIN',
+  'AURALIS_OAUTH_CLIENT_ID',
+  'AURALIS_OAUTH_CLIENT_SECRET'
 ]);
 
 class ConfigError extends Error {
@@ -83,6 +86,43 @@ function parseAccessToken(rawToken) {
   return token;
 }
 
+function parseOAuthConfig(env) {
+  const keys = [
+    'AURALIS_PUBLIC_ORIGIN',
+    'AURALIS_OAUTH_CLIENT_ID',
+    'AURALIS_OAUTH_CLIENT_SECRET'
+  ];
+  const present = keys.filter((key) => typeof env[key] === 'string' && env[key].trim() !== '');
+  if (present.length === 0) return null;
+  if (present.length !== keys.length) {
+    throw new ConfigError(`OAuth MCP configuration must include: ${keys.join(', ')}.`);
+  }
+
+  const origin = env.AURALIS_PUBLIC_ORIGIN.trim();
+  let parsed;
+  try {
+    parsed = new URL(origin);
+  } catch {
+    throw new ConfigError('AURALIS_PUBLIC_ORIGIN must be an exact HTTPS origin.');
+  }
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.port
+    || parsed.pathname !== '/' || parsed.search || parsed.hash || parsed.origin !== origin) {
+    throw new ConfigError('AURALIS_PUBLIC_ORIGIN must be an exact HTTPS origin.');
+  }
+
+  const clientId = env.AURALIS_OAUTH_CLIENT_ID.trim();
+  const clientSecret = env.AURALIS_OAUTH_CLIENT_SECRET.trim();
+  if (clientId.length < 8 || clientId.length > 128 || /\s/u.test(clientId)) {
+    throw new ConfigError('AURALIS_OAUTH_CLIENT_ID must be 8 to 128 non-whitespace characters.');
+  }
+  if (clientSecret.length < MIN_PUBLIC_TOKEN_LENGTH || /\s/u.test(clientSecret)) {
+    throw new ConfigError(
+      `AURALIS_OAUTH_CLIENT_SECRET must be at least ${MIN_PUBLIC_TOKEN_LENGTH} characters without whitespace.`
+    );
+  }
+  return Object.freeze({ origin, clientId, clientSecret });
+}
+
 function loadConfig(env = process.env) {
   if (!env || typeof env !== 'object') {
     throw new ConfigError('Server configuration is unavailable.');
@@ -115,6 +155,7 @@ function loadConfig(env = process.env) {
     : null;
   values.host = resolveListenHost(env);
   values.accessToken = parseAccessToken(env.PUBLIC_V1_ACCESS_TOKEN);
+  values.oauth = parseOAuthConfig(env);
   if (!isLoopbackHost(values.host)
     && (values.accessToken === null || Array.from(values.accessToken).length < MIN_PUBLIC_TOKEN_LENGTH)) {
     throw new ConfigError(
@@ -136,6 +177,7 @@ module.exports = {
   isLoopbackHost,
   loadConfig,
   parseAccessToken,
+  parseOAuthConfig,
   parsePort,
   resolveListenHost
 };

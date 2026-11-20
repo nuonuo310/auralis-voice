@@ -20,7 +20,7 @@ V1 不包含账号、收藏、声音馆、长期记忆、Dashboard、多用户�
 - MiniMax 中国区账号。
 - 部署者自己的 API Key、`voice_id` 和模型名称。
 
-项目只使用 Node.js 内置模块，没有第三方运行时依赖。
+项目使用官方 Model Context Protocol SDK、MCP Apps 扩展与 Zod 来提供可选的 ChatGPT 私有 MCP 连接。
 
 ## 全新文件夹本地部署
 
@@ -31,7 +31,7 @@ V1 不包含账号、收藏、声音馆、长期记忆、Dashboard、多用户�
    npm install
    ```
 
-   当前 V1 没有第三方运行时依赖；保留这一步是为了让新用户按标准 Node 项目流程完成初始化，并提前发现 Node/npm 环境问题。
+   这一步会安装 MCP 服务与猫耳组件宿主所需的固定依赖。
 
 3. 运行离线测试：
 
@@ -39,7 +39,7 @@ V1 不包含账号、收藏、声音馆、长期记忆、Dashboard、多用户�
    npm test
    ```
 
-   当前发布基线应为 68/68 通过、0 失败。
+   当前发布基线应为 73/73 通过、0 失败。
 
 4. 将 `.env.example` 复制为 `.env`，填写部署者自己的值：
 
@@ -49,6 +49,9 @@ V1 不包含账号、收藏、声音馆、长期记忆、Dashboard、多用户�
    MINIMAX_VOICE_ID=
    MINIMAX_MODEL=
    PUBLIC_V1_ACCESS_TOKEN=
+   AURALIS_PUBLIC_ORIGIN=
+   AURALIS_OAUTH_CLIENT_ID=
+   AURALIS_OAUTH_CLIENT_SECRET=
    ```
 
    `MINIMAX_GROUP_ID` 在新版平台通常留空；只有旧账号明确获得 GroupId 时才填写。`PUBLIC_V1_ACCESS_TOKEN` 在仅监听 loopback 的本地开发中可以留空。
@@ -80,6 +83,9 @@ V1 不包含账号、收藏、声音馆、长期记忆、Dashboard、多用户�
 | `MINIMAX_VOICE_ID` | 是 | 部署者自己的音色 ID |
 | `MINIMAX_MODEL` | 是 | MiniMax 模型名称 |
 | `PUBLIC_V1_ACCESS_TOKEN` | 见下文 | 非 loopback 部署强制要求的访问令牌 |
+| `AURALIS_PUBLIC_ORIGIN` | MCP 时必填 | 部署服务的精确 HTTPS origin，例如 `https://example.onrender.com` |
+| `AURALIS_OAUTH_CLIENT_ID` | MCP 时必填 | ChatGPT 私有连接使用的公开客户端标识 |
+| `AURALIS_OAUTH_CLIENT_SECRET` | MCP 时必填 | 至少 32 字符的 OAuth 客户端密钥；不得写入仓库或前端 |
 | `HOST` | 否 | 默认 `127.0.0.1`；部署平台通常设为 `0.0.0.0` |
 | `PORT` | 否 | 默认 `3000`；部署平台应使用其注入值 |
 
@@ -101,6 +107,7 @@ V1 不包含账号、收藏、声音馆、长期记忆、Dashboard、多用户�
 - `POST /api/tts`：请求体只允许 `{ "text": "..." }`，成功时直接返回 `audio/mpeg`。
 - `GET /player/preview.html`：离线五态视觉预览。
 - `GET /player/smoke.html`：部署者受控的一次性真实验收页。
+- `POST /mcp`：可选的 OAuth 保护 MCP 入口，仅向已连接的 ChatGPT 私有插件提供语音工具和猫耳组件。
 
 完整请求、错误码、播放器方法、事件和受保护宿主接入示例见 [`docs/PLAYER-CONTRACT.md`](docs/PLAYER-CONTRACT.md)。
 
@@ -126,8 +133,24 @@ API Key、GroupId、`voice_id` 和模型始终只来自服务端环境。
 - `PORT`：使用 Render 自动注入的值，不要固定填写
 - 配置 `MINIMAX_API_KEY`、`MINIMAX_VOICE_ID`、`MINIMAX_MODEL` 和至少 32 字符、无空白的 `PUBLIC_V1_ACCESS_TOKEN`
 - `MINIMAX_GROUP_ID`：新版平台留空；旧账号按平台提供值填写
+- 若启用 ChatGPT 私有 MCP，再配置 `AURALIS_PUBLIC_ORIGIN`、`AURALIS_OAUTH_CLIENT_ID` 和至少 32 字符的 `AURALIS_OAUTH_CLIENT_SECRET`
 
 部署后先检查 `/health`，再按接入契约由受控宿主携带 Bearer 令牌请求 `/api/tts`。不要把令牌写进公开的 `preview.html`、`smoke.html` 或其他静态文件。
+
+## ChatGPT 私有 MCP 连接
+
+部署完成后，在 ChatGPT 的 Plugins 页面选择 **Add → Add custom MCP server**：
+
+- Name：`Auralis Voice`
+- Server URL：`https://你的部署域名/mcp`
+- Authentication：`OAuth`
+- Registration method：`User-Defined OAuth Client`
+- Callback URL：服务端只接受 ChatGPT 显示的 `https://chatgpt.com/connector_platform_oauth_redirect`
+- OAuth client ID / secret：分别填写服务端的 `AURALIS_OAUTH_CLIENT_ID` / `AURALIS_OAUTH_CLIENT_SECRET`
+- Token endpoint auth method：`client_secret_post`
+- Scope：`voice:speak`
+
+OAuth 授权码使用 PKCE S256、五分钟单次有效；访问令牌和刷新令牌只保存在服务进程内存中。部署重启后需要重新连接，这是 V1 的有意安全边界。插件工具只有在用户明确要求听语音时才应调用；播放器音频通过组件专用元数据交付，不进入普通模型文本。
 
 ## 范围与发布门禁
 
