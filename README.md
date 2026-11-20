@@ -25,7 +25,15 @@ V1 不包含账号、收藏、声音馆、长期记忆、Dashboard、多用户�
 ## 全新文件夹本地部署
 
 1. 将项目文件放入一个全新文件夹并进入项目根目录。
-2. 运行离线测试：
+2. 安装项目依赖：
+
+   ```text
+   npm install
+   ```
+
+   当前 V1 没有第三方运行时依赖；保留这一步是为了让新用户按标准 Node 项目流程完成初始化，并提前发现 Node/npm 环境问题。
+
+3. 运行离线测试：
 
    ```text
    npm test
@@ -33,7 +41,7 @@ V1 不包含账号、收藏、声音馆、长期记忆、Dashboard、多用户�
 
    当前发布基线应为 68/68 通过、0 失败。
 
-3. 将 `.env.example` 复制为 `.env`，填写部署者自己的值：
+4. 将 `.env.example` 复制为 `.env`，填写部署者自己的值：
 
    ```dotenv
    MINIMAX_API_KEY=
@@ -45,7 +53,7 @@ V1 不包含账号、收藏、声音馆、长期记忆、Dashboard、多用户�
 
    `MINIMAX_GROUP_ID` 在新版平台通常留空；只有旧账号明确获得 GroupId 时才填写。`PUBLIC_V1_ACCESS_TOKEN` 在仅监听 loopback 的本地开发中可以留空。
 
-4. 使用 Node 自带的环境文件加载启动：
+5. 使用 Node 自带的环境文件加载启动：
 
    ```text
    node --env-file=.env src/server.js
@@ -53,13 +61,13 @@ V1 不包含账号、收藏、声音馆、长期记忆、Dashboard、多用户�
 
    默认只监听 `127.0.0.1:3000`。
 
-5. 检查健康状态：
+6. 检查健康状态：
 
    ```text
    http://127.0.0.1:3000/health
    ```
 
-6. 打开 `http://127.0.0.1:3000/player/preview.html` 验收五态视觉。`/player/smoke.html` 只供部署者进行受控的单次真实 TTS 验收，不是正式产品入口。
+7. 打开 `http://127.0.0.1:3000/player/preview.html` 验收五态视觉。`/player/smoke.html` 只供部署者进行受控的单次真实 TTS 验收，不是正式产品入口。
 
 不要提交、上传或公开 `.env`。
 
